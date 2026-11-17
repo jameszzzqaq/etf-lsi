@@ -187,35 +187,36 @@ def build(pair, series_map):
     dc, df, dn = pair['den']
     a = series_map.get(nc) or {}
     b = series_map.get(dc) or {}
-    # 按 ISO 周配对，而不是按日期字符串取交集。
-    # 两条腿的"当周"时间戳可能差一天：westock 的周K打到最新交易日（当天），
-    # csindex 的日K聚合成周K只能打到最后一个已发布的日线（当天或前一天）。
-    # 严格按日期取交集会让整周消失、比价静默退回上一周（2026-11-17 实测：
-    # style_hldb 停在 11-13，而另外三条已到 11-17）。按周配对后同周即配，
-    # 显示日期取两条腿中较晚的那条。同源双腿（如 000922/399006）每周仍只有一对，
-    # 结果与旧算法逐位相同。
-    def _wk(x):
-        return datetime.datetime.strptime(x, '%Y-%m-%d').date().isocalendar()[:2]
-
-    def _by_week(s):
-        m = {}
-        for d, c in s.items():
-            k = _wk(d)
-            if k not in m or d > m[k][0]:
-                m[k] = (d, c)
-        return m
-
-    wa, wb = _by_week(a), _by_week(b)
+    dates = sorted(set(a) & set(b))
     vals, dts = [], []
-    for k in sorted(set(wa) & set(wb)):
-        da, ca = wa[k]
-        db, cb = wb[k]
+    for d in dates:
         try:
-            v = ca / cb
+            v = a[d] / b[d]
         except Exception:
             continue
         vals.append(v)
-        dts.append(max(da, db))
+        dts.append(d)
+
+    # 尾部补一根「当周」：两条腿对当周的时间戳可能差一天——
+    # westock 的周K打到最新交易日（当天），csindex 的日K聚合成周K只能打到最后一个
+    # 已发布的日线（有时是前一天）。严格按日期取交集会让当周整根消失，比价静默退回
+    # 上一周（2026-11-17 实测：style_hldb 停在 11-13，另三条已到 11-17）。
+    # 只在「两条腿的最后一根同属一个 ISO 周、且该周还没配上」时补这一根：
+    # 历史部分与旧的交集算法逐位一致，同源双腿（000922/399006 等）本来就不会触发。
+    if a and b:
+        la, lb = max(a), max(b)
+
+        def _wk(x):
+            return datetime.datetime.strptime(x, '%Y-%m-%d').date().isocalendar()[:2]
+
+        if _wk(la) == _wk(lb) and (not dts or _wk(dts[-1]) != _wk(la)):
+            try:
+                vals.append(a[la] / b[lb])
+                dts.append(max(la, lb))
+                print('  .. %s 尾部补齐当周：%s / %s（两条腿周戳不同）'
+                      % (pair['key'], la, lb))
+            except Exception:
+                pass
     if len(vals) < 60:
         print('!! %s 有效数据不足（%d）' % (pair['title'], len(vals)))
         return None
