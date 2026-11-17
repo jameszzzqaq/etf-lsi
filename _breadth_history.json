@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-17 16:09",
+ "updated": "2026-11-18 05:47",
  "rows": [
   {
    "date": "2026-11-04",
@@ -119,7 +119,7 @@
    "limit_up": 37,
    "limit_down": 67,
    "max_streak": 3,
-   "is_today": true
+   "is_today": false
   }
  ]
 }
