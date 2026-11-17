@@ -139,6 +139,10 @@
 用**周K**而非日K：行情接口单次最多返回约 1210 根日K（≈5年），脚本按 **4 年一段分段抓取再拼接**（每段约 208 周，低于 260 上限）。
 已实测分段重叠处数值 100% 一致，且接口返回即前复权价，拼接安全、无分红除息假跳空。百分位基于各标的**上市以来全周期**全样本。
 
+> **两条取数通道**：`sh/sz` 开头的普通代码走 `westock-data kline`（分段周K）；**`csindex:` 开头的走 Worker `/api/csindex` 取日K、本地按 ISO 周聚合成周K**。
+> 原因：`H30269` 属中证「自定义指数」，`westock-data` 的 kline 通道实测返回「数据为空」，只能走 Worker；而 Worker 只给日K，所以聚合这一步留在本仓库做。
+> 聚合规则是「同周取最后一个交易日收盘」，**与 `westock-data` 的周K同构**，四条线才能横向比。详见文末「附录 · 2026-11-17」。
+
 ---
 
 ## 三、模块三：宏观 LSI 压力指数与 20 项报警
@@ -222,6 +226,13 @@ GLI (T)   = WALCL − WTREGEN − RRPONTSYD             美联储净流动性总
 | ETF 折溢价 | 腾讯行情（价）+ 东财净值 | `fetch_signals.py` → Worker `/api/etf-premium` | 否 |
 | 市场宽度（涨跌家数/涨停跌停/连板） | 东财 push2ex | `fetch_signals.py` → Worker `/api/market-breadth` | 否 |
 | 国债收益率曲线（2/5/10/30Y + 期限利差） | 东财 datacenter | `fetch_signals.py` → Worker `/api/cn-rates` | 否 |
+| 中证自定义指数日K（红利低波 `H30269`） | 中证指数官网（经 Worker 代理） | `fetch_ratios.py` → Worker `/api/csindex`（日K，本地聚合周K） | 否 |
+
+> **Worker 鉴权（2026-11-17 起）**：`a-stock-api` 除根路径 `/` 外**所有 `/api/*` 端点都强制校验 `X-API-Key`**。
+> 本仓库所有取数脚本都从环境变量 `A_STOCK_API_KEY` 读（`fetch_exchange.py` / `fetch_signals.py` 用 `_worker_headers()`，
+> `fetch_ratios.py` 用 `_api_get()`），值只存在于 Actions Secrets，**代码里绝不写死**。
+> 上表「需要 Key」列指的是 FRED 的 `FRED_API_KEY`，与 Worker 密钥是两回事。
+> 缺这个 Secret 的表现：`/api/*` 一律 401 → 份额改走直连兜底、比价第 4 张卡消失，**流程仍然绿灯**。
 
 > **改造边界（重要）**：2026-11 的迁移**只动了 A 股那半**（`fetch_exchange.py`）。
 > `fetch_fred_lsi.py` 与 `common.py`（FRED 部分）**一行未改**，宏观 LSI 链路保持原样。
@@ -577,6 +588,7 @@ git push -u origin main
 | `ETF_SMTP_USER` | 发件邮箱地址（如 `123456@qq.com`） |
 | `ETF_SMTP_PASS` | 该邮箱的 **SMTP 授权码**（不是登录密码；QQ 邮箱在 设置 → 账户 → 开启 SMTP 后生成 16 位授权码） |
 | `ETF_MAIL_TO`  | 收件邮箱（多个用英文逗号分隔，如 `a@qq.com,b@gmail.com`） |
+| `A_STOCK_API_KEY` | 自建数据源 `a-stock-api` 的访问密钥（Worker 全端点强制校验 `X-API-Key`）。缺它不会让流程变红，但会退化成直连兜底 / 比价少一张卡；换值只需改 Secret，代码零改动 |
 
 > **可选（备份通道）**：`ETF_SMTP_USER_2` / `ETF_SMTP_PASS_2` / `ETF_MAIL_TO_2`（第二个发件账号，例如 Gmail 应用专用密码）。
 >
@@ -875,7 +887,8 @@ python send_mail.py
 | 文件 | 职责 | 改之前必须知道 |
 | :--- | :--- | :--- |
 | `config.py` | 全部口径与常量：`TRACKS`（4+4 只 ETF、指数代码、文案）、`RATIO_PAIRS`、`FRED_SERIES`、`LSI_TH`、配色（红涨绿跌） | **单一事实源**。改标的、改阈值、改文案都只在这里改；`ORDER = ['hs300','cyb']` 决定渲染顺序，别乱动 |
-| `fetch_exchange.py` | A 股链路取数：沪份额（Worker→直连）、深份额（xlsx）、净值（Worker→东财）、交易日历（Worker） | 这是 2026-11 迁移**唯一**改过的文件。它只消费 Worker 的 HTTP 契约，不依赖 akshare |
+| `fetch_exchange.py` | A 股链路取数：沪份额（Worker→直连）、深份额（xlsx）、净值（Worker→东财）、交易日历（Worker） | 这是 2026-11 迁移**唯一**改过的取数文件（2026-11-17 的比价升级另动了 `fetch_ratios.py`，见文末附录）。它只消费 Worker 的 HTTP 契约，不依赖 akshare |
+| `fetch_ratios.py` | ④ 四大风格 / 股债比价：周K全周期 → 历史百分位 → `ratios.json`（含 `order`） | **两条通道**：`sh/sz` 走 `westock-data kline`（4 年一段拼接），`csindex:` 走 Worker `/api/csindex` 日K聚合周K。新增/修改比价**只改 `config.py` 的 `RATIO_PAIRS`**，不要在这里写 if 分支 |
 | `fetch_data.py` | ETF 行情 / 市值 / 周K，维护 `raw_data.json`、`ratios.json` 滚动缓存 | 缓存窗口裁剪在这里；写回前会丢弃 `ETF_DAYS` 之外的旧日期 |
 | `fetch_fred_lsi.py` | 宏观 20+ 条 FRED 序列 → LSI、报警、`lsi.json`、`lsi_status.json` | **宏观链路，禁止顺手改**（除非任务明确要求动宏观）。改坏了看板整块变 null，而退出码仍是 0 |
 | `common.py` | FRED 请求封装 `http_json(url, csv_id=…)`，JSON 挂自动走 CSV | `csv_id` 参数**不能省**，省了就等于放弃第二条通道（见铁律 7） |
@@ -1014,6 +1027,11 @@ A 股（境内）  fetch_exchange.py ── a-stock-api Worker ──┬─ quer
 - ⑨ 面板的中枢与波动区间必须由 `dr001` 序列自动计算（20 日滚动均值 / 同窗口 min~max），**不许重新引入硬编码政策利率**（如 1.25%、±25bp）；央行调息时看板须零改动自动跟随。
 - ⑨ 面板的沪深300 归一紫线（主图右轴 + 副图 + 图例 + tooltip + hint 共 5 处）不可删除；灰虚线必须标为「SHIBOR 隔夜 O/N」，不许简写成「隔夜」。
 - ⑨ 副图蓝虚线是自适应辅助刻度（由视图内最大偏离算出），**不是告警阈值**；文案不得写成「阈值 / 警戒线」，越过它不触发任何动作。
+- ④ 四大风格的**唯一事实源是 `config.py` 的 `RATIO_PAIRS`**：加/删/改比价只动这里，`make_dashboard.py` 是数据驱动渲染（`for (const k of D.ratios.order)`），**不要为某一张卡片加专门分支**。
+- 分子统一为「防御性资产」，所以**比值上行 = 防御占优**；`high` / `low` 文案是绝对性价比结论，不许改写成「走强 / 走弱」这类相对口径。`［均前复权］` 后缀必须保留。
+- 中证自定义指数（`H` 开头，如 `H30269`）必须写成 `csindex:H30269` 走 `/api/csindex`；**不要换回 `westock-data kline`**（实测返回空表，会让 ④ 静默少一张卡且退出码仍是 0）。日K→周K 只能按 ISO 周取**最后一个交易日收盘**，不许改成周内均值/求和。
+- Worker 全端点（除 `/`）强制 `X-API-Key`：密钥只从环境变量 `A_STOCK_API_KEY` 读，**任何形式的硬编码 / 提交到仓库 / 写进 config 都算错**。
+- `config.py` 里 `rrp_peak_window` 固定 `500`（Pine V81 是 2500），这是**主动不升级**，不要去「修正」它。
 
 【改完必须自检】
 1. python fetch_exchange.py → 日志应出现「第 1 轮 N/N 天成功，失败 0」，不应出现熔断。
@@ -1127,6 +1145,8 @@ commit message 用中文，说明「改了什么 + 为什么」，涉及口径�
 5. 改了数据源/单位/调度，同步 README 四（数据源与单位换算）、五（流水线与产物）、九（铁律）、十二（提示词）。
 6. 线上写操作：精确 git add、中文 commit、git pull --rebase、绝不 force。
 7. ⑨ 面板口径见 4.5.1：中枢全自动、沪深300 对照不可删、SHIBOR O/N 不可简写、副图蓝虚线不是阈值。
+8. ④ 比价只改 config.py 的 RATIO_PAIRS；H 开头的中证自定义指数写 csindex: 前缀走 /api/csindex；
+   rrp_peak_window 保持 500 不要动；Worker 密钥只从 A_STOCK_API_KEY 环境变量读。详见文末 2026-11-17 附录。
 ```
 ### E. 验证与回滚
 
@@ -1423,6 +1443,65 @@ AI 读到的数字与人在页面看到的完全一致；Cloudflare / GitHub Pag
 - 自算中枢按前端 `winStat()` 同一算法（末 20 行跳过 `null`、`n>=3`）得 `CENTER ≈ 1.2786%`、`LO~HI 1.26~1.32`、`n=20`，与页面现算一致；`dr001` 不足时只跳过小表、不影响其它章节、不报错。
 
 **回滚**：`git revert 74b2062` 后手动 `workflow_dispatch` 一次重新发布即可；`llms.txt` / `data.json` 只进 `public/` 发布到 `gh-pages` / Cloudflare，不在 `main` 留过期副本（详见 H 节）。
+
+---
+
+## 附录 · 2026-11-17 ④ 三大风格 → 四大风格（+ Worker 鉴权文档同步）（给维护者 / 给 AI 读）
+
+一句话结论：**只动了 A 股半的「比价」这一条支线，宏观半一行未改**；④ 从 3 张卡变成 4 张卡，而**渲染代码没有新增任何分支**。
+
+### A. 本次改了什么（逐文件）
+
+| 文件 | 改动 |
+| :--- | :--- |
+| `config.py` | ① `style_cyb` 统一叫法：「红利」→ **中证红利指数**（`000922` 一直就是中证红利指数，旧文案写成「红利低波」是错的），`title` / `formula` / `high` / `low` / `low_tilt` 一并改；② 新增第 3 条 `style_hldb`：**中证红利低波 `H30269` ÷ 创业板指 `399006`**，插在 `bond` **之前**（保证 3 条风格线相邻、股债比价排最后），字段结构与前两条完全一致；③ 注释「三大风格」→「四大风格」。 |
+| `fetch_ratios.py` | 新增 **`csindex:` 通道**：`get_series_csindex()` 走 Worker `/api/csindex` 取**日K**，按 ISO 周本地聚合成**周K**（同周取最后一个交易日收盘），返回值与 `parse_kline()` 完全同构（`(date, close)` 列表），所以 `build()` / 百分位 / 分档 / 文案逻辑**一行都没改**；新增 `_api_get()` 统一挂 `X-API-Key`；`get_series()` 开头按前缀分派。文件头注释「三大→四大」、① 改名、③ 新增、④ 顺延为重排。 |
+| `make_dashboard.py` | **只改 3 处文字**：`④ 三大风格` → `④ 四大风格`（`<h2>`、文件头注释、CSS 注释各一处）。渲染本来就是数据驱动的（`for (const k of D.ratios.order)`），CSS `grid-template-columns:repeat(auto-fit,minmax(400px,1fr))` 天然容纳第 4 张卡片。 |
+| `README.md` | §2.3 改成四行表 + 通道说明；§4.0 补 `csindex` 行与 Worker 鉴权段；§6.2 密钥清单补 `A_STOCK_API_KEY`；§12.1 补 `fetch_ratios.py` 行；§12.5 补 5 条硬约束；本附录。 |
+| `.github/workflows/daily.yml` | **无改动**。`A_STOCK_API_KEY` 在早前的鉴权改造中已注入 job 级 `env`，本次只是新增了一个同样受鉴权保护的端点调用。 |
+
+### B. 为什么必须单开 `csindex:` 通道（别「顺手合并」回 kline）
+
+- `H30269` 属中证「自定义指数」，`westock-data kline` 通道实测返回 **「数据为空」**——那个通道按 `sh/sz` 前缀取交易所代码，认不了 `H` 开头。
+- 自建 Worker 的 `/api/csindex` 能取到（实测 **2641 根日K**），但**只给日K，没有周K**。
+- 于是口径定为：**普通代码继续走 `westock-data` 分段周K；只有 `csindex:` 前缀走 Worker 日K + 本地周聚合**。两条通道彼此独立，一条挂了不影响另外三条比价。
+- 聚合规则：按 `isocalendar()` 的 `(ISO 年, ISO 周)` 分组，同周内按日期升序、**后者覆盖前者** = 取该周最后一个交易日收盘；`close` 用 `r.get('close') or r.get('c')` 兼容两种字段名。**不要改成周内求和 / 周内均值**，那与 `westock-data` 的周K不同构，四条线就失去横向可比性。
+
+### C. 本次坚决没改（硬约束）
+
+1. **宏观半一行未改**：`fetch_fred_lsi.py`、`common.py`，以及 `config.py` 里的 `FRED_SERIES` / `LSI_TH` / `rrp_peak_window` 全部保持字节级一致（改完做过字符串比对断言）。
+2. **B1 的 `rrp_peak_window` 保持 `500`，不升级成 Pine V81 的 `2500`。** 这是**主动决策，不是漏改**——用户明确指示「不要碰 B1 了，保持原样即可」。想动它之前先想清楚：`rrp_pct = RRP / Highest(RRP, N) × 100%` 一换窗口，`is_rrp_exhausted` 的触发次数与「缓冲垫枯竭」的语义都会变，属于**口径变更**，不是性能升级。
+3. **`［均前复权］` 后缀保留**：四条 `formula` 都带，表示分子分母均为前复权价。不要因为「看着累赘」删掉。
+4. **百分位口径不变**：仍是「各标的**上市以来全周期**全样本」的历史百分位，`level` 分档（high / low / 中位）与文案优先级不变；新增的 `style_hldb` 自然沿用同一套。
+5. **没有引入任何新依赖**：`requirements.txt` 仍是 `matplotlib / numpy / requests / openpyxl`，`csindex` 通道只用标准库 `urllib`。
+6. **Pine V81 的其余升级点本次一律不移植**（渲染合批、颜色常量、`lsi_data_ok` / `rrp_data_ok` 数据存活闸门等）。理由：它们是 TradingView 渲染层的优化，Python 侧要么无对应概念，要么会改动宏观半的数据流。**要做另开一轮，单独评估。**
+
+### D. 明令不做（别再走回头路）
+
+- ❌ 把 `H30269` 换回 `westock-data kline`。取不到，而且失败方式是「④ 静默少一张卡、流程仍然绿灯」，最难发现。
+- ❌ 在 `make_dashboard.py` 里给第 4 张卡片加专门分支或改网格列数。数据驱动就是设计：加第 5 条比价应该只需改 `config.py` 一处。
+- ❌ 把 `A_STOCK_API_KEY` 写进代码 / `config.py` / 仓库变量。它只存在于 Actions Secrets。
+- ❌ 再提「把 `rrp_peak_window` 升到 2500」（见 C-2）。
+- ❌ 用「比值走强 / 走弱」替代 `high` / `low` 的绝对性价比结论。分子统一是防御资产，比值高 = 防御贵 = 进攻端性价比高，方向不能含糊。
+
+### E. 验证与实测记录
+
+| 项目 | 结果 |
+| :--- | :--- |
+| 源码提交 | `cd32997` config 四条比价 · `95bc7cf` csindex 通道 · `a93a251` ④ 文案 · `91d4ba9` README §2.3 · `afcf05d7` config 注释与 `style_cyb` 防御端文案更正 |
+| 触发方式 | **手动 `workflow_dispatch`**（改的是 `config.py` / `fetch_ratios.py`，不在 `daily.yml` 的 `on.push.paths` 内，push 不会自动跑） |
+| workflow run | **`44035059346`**，[日志](https://github.com/wj624/etf-lsi/actions/runs/44035059346) |
+| 结论 | `success`（含 `Check LSI data completeness` 闸门），产物 commit `8789956` |
+| 运行时间 | 2026-11-17 06:57:50Z ~ 07:02:33Z（约 4 分 43 秒），13 个业务 step 全 PASS |
+| ④ 面板 | 4 张卡片，`order = style_cyb → style_star → style_hldb → bond`；`<h2>` 已是「④ 四大风格 / 股债比价 · 全周期历史百分位」 |
+| `ratios.json`（内嵌进页面 `const D`） | 4 条齐全：`style_hldb` 当前 `4.6839`、百分位 `57.5%`、`n=843` 周、`level=mid`（均衡）；其余三条数值与升级前一致 |
+| 页面 | gh-pages `index.html` 562,186 字符：含「四大风格」1 次、「三大风格」0 次、`style_hldb` 3 次 |
+
+**本地验证**（提交前）：`ast.parse` 通过；`FRED_SERIES` / `LSI_TH` / `rrp_peak_window` 字符串比对全部一致；四条比价端到端跑通，
+`style_hldb` 输出完整（当前值 / 百分位 / 分档 / 文案 / 分位参照）；源码不含任何密钥明文，`X-API-Key` 只从环境变量读。
+
+**回滚**：`git revert <本次 commit>` 即可。`ratios.json` 是跑批产物（走 Actions 缓存，不提交到 `main`），
+删掉 `config.py` 里的 `style_hldb` 那段后重跑一次，`items` / `order` 会按 `RATIO_PAIRS` 重新生成、自动收敛回 3 条，不留残项。
 
 ---
 
