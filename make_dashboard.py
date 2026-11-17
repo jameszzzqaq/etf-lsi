@@ -663,6 +663,7 @@ if (D.ratios && D.ratios.items) {
       '<span>20分位 '+it.q20.toFixed(4)+'｜80分位 '+it.q80.toFixed(4)+'</span></div>'+
       '<div style="margin-top:8px;font-size:12.4px;color:'+col+'"><b>'+esc(it.label)+'</b></div>'+
       '<div class="fm" style="margin-top:3px">'+esc(it.advice)+'</div>'+
+      (it.pct_pub!=null ? '<div class="fm">发布后窗口分位 <b style="color:'+col+'">'+it.pct_pub.toFixed(1)+'%</b>（'+it.pub_from+' 起 '+it.n_pub+' 周，剔除发布前回算段）</div>' : '')+
       '<div class="fm">覆盖 '+it.n+' 周（约 '+it.years+' 年，'+it.start+' ~ '+it.end+'）　配置倾向：<b style="color:#F5A623">'+esc(it.tilt)+'</b></div></div>';
   }
   $('ratioCards').innerHTML = h;
