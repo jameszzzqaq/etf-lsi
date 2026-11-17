@@ -350,6 +350,7 @@ def build(d):
         A('数据日 %s，周期 `%s`。' % (s(ratios.get('asof')), s(ratios.get('period'))))
         A('')
         keys = [k for k in (ratios.get('order') or RATIO_ORDER) if k in items] or list(items.keys())
+        unit = '周' if s(ratios.get('period')) == 'week' else '日'
         for k in keys:
             r = items.get(k) or {}
             A('### %s' % s(r.get('title'), k))
@@ -359,12 +360,16 @@ def build(d):
               % (num(r.get('cur'), 4), pctv(r.get('pct')), s(r.get('level')), s(r.get('word'))))
             A('- 判读：%s；建议：**%s**（%s）'
               % (s(r.get('label')), s(r.get('tilt')), s(r.get('advice'))))
-            A('- 区间：min %s / 中位 %s / max %s；q20 %s / q80 %s；样本 %s 日（起 %s）'
+            A('- 区间：min %s / 中位 %s / max %s；q20 %s / q80 %s；样本 %s %s（起 %s）'
               % (num(r.get('min'), 4), num(r.get('median'), 4), num(r.get('max'), 4),
-                 num(r.get('q20'), 4), num(r.get('q80'), 4), s(r.get('n')), s(r.get('start'))))
-            A('- 变动：近 20 日 %s / 近 60 日 %s / 近 250 日 %s'
-              % (pctv(r.get('chg20'), 2, True), pctv(r.get('chg60'), 2, True),
-                 pctv(r.get('chg250'), 2, True)))
+                 num(r.get('q20'), 4), num(r.get('q80'), 4), s(r.get('n')), unit,
+                 s(r.get('start'))))
+            if r.get('pct_pub') is not None:
+                A('- 发布后窗口分位 **%s**（%s 起 %s 周，剔除发布前回算段；主口径仍为全样本）'
+                  % (pctv(r.get('pct_pub')), s(r.get('pub_from')), s(r.get('n_pub'))))
+            A('- 变动：近 1 月 %s / 近 1 季 %s / 近 1 年 %s'
+              % (pctv(r.get('chg_m'), 2, True), pctv(r.get('chg_q'), 2, True),
+                 pctv(r.get('chg_y'), 2, True)))
             A('')
 
     A('---')
