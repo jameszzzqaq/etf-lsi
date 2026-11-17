@@ -241,6 +241,20 @@ def build(pair, series_map):
 
     med = statistics.median(vals)
 
+    # 「发布后窗口分位」（可选副标尺）：只对配了 sample_from 的比价算。
+    # 指数若先有回算历史、后才有发布，回算段会把中枢抬高、把当前值稀释成「中性」；
+    # 但它不能替代主口径——四条线必须同一样本区间才能横向比，所以只作为卡片上的第二行。
+    pct_pub = n_pub = None
+    pub_from = pair.get('sample_from')
+    if pub_from:
+        sub = [v for d, v in zip(dts, vals) if d >= pub_from]
+        if len(sub) >= 60:
+            ss = sorted(sub)
+            pct_pub = bisect.bisect_right(ss, cur) / len(ss) * 100.0
+            n_pub = len(sub)
+            print('   .. %s 发布后窗口分位 %.1f%%（%s 起 %d 周）'
+                  % (pair['key'], pct_pub, pub_from, n_pub))
+
     def qval(p):
         i = min(n - 1, max(0, int(round(p / 100.0 * (n - 1)))))
         return srt[i]
@@ -285,6 +299,7 @@ def build(pair, series_map):
         'dev_median': (cur / med - 1) * 100.0,
         'label': label, 'advice': advice, 'tilt': tilt,
         'n': len(vals), 'start': dts[0], 'end': dts[-1],
+        'pct_pub': pct_pub, 'n_pub': n_pub, 'pub_from': pub_from,
         'years': round(years, 1) if years else None,
         'dates': dts[-TAIL:], 'values': vals[-TAIL:],
     }
