@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-模块二 · 三大风格 / 股债比价（周K全周期百分位）
+模块二 · 四大风格 / 股债比价（周K全周期百分位）
 
-统一口径：三个比值都是「防御性资产 ÷ 进攻性资产」
-  ① style_cyb ：中证红利低波(000922) ÷ 创业板指(399006)
+统一口径：四个比值都是「防御性资产 ÷ 进攻性资产」
+  ① style_cyb ：中证红利指数(000922) ÷ 创业板指(399006)
   ② style_star：中证红利(000922)     ÷ 科创50(000688)
-  ③ bond      ：十年国债ETF(511260)  ÷ 沪深300ETF(510300)
+  ③ style_hldb：中证红利低波(H30269) ÷ 创业板指(399006)（走 /api/csindex，日K聚合成周K）
+  ④ bond      ：十年国债ETF(511260)  ÷ 沪深300ETF(510300)
 
 接口单次最多返回约 1210 根日K（≈5年），故改用周K：
 按 4 年一段分段抓取拼接成全周期序列。已实测分段重叠处数值 100% 一致，
@@ -51,8 +52,71 @@ def fetch_rows(code, s, e, fq=None, tries=3, waits=(3.0, 8.0)):
     return rows, raw
 
 
+def get_series_csindex(symbol, s, e, tries=3):
+    """中证自定义指数（H 开头）：走 a-stock-api /api/csindex 的日K，本地聚合成周K。
+    westock-data 的 kline 通道取不到 H30269（实测「数据为空」），故单列此通道。
+    输出的 (date, close) 与 parse_kline 完全同构，build() 无需任何改动。
+    """
+    key = 'csindex:' + symbol
+    path = '/api/csindex'
+    params = {'symbol': symbol, 'start': s.replace('-', '')}
+    last = ''
+    for i in range(tries):
+        try:
+            j = _api_get(path, params)
+            rows = j.get('data') or []
+            if rows:
+                # 日K -> 周K：按 ISO 周分组，取每周最后一个交易日的收盘
+                buckets = {}
+                for r in rows:
+                    d = r.get('date') or r.get('d') or ''
+                    c = r.get('close') or r.get('c')
+                    if not d or c is None:
+                        continue
+                    try:
+                        dt = datetime.datetime.strptime(d[:10], '%Y-%m-%d')
+                    except Exception:
+                        continue
+                    wk = '%04d-W%02d' % dt.isocalendar()[:2]
+                    buckets[wk] = (d[:10], float(c))   # 同周内日期升序，后者覆盖 = 周末收盘
+                out = sorted(buckets.values(), key=lambda x: x[0])
+                return out, ''
+            last = '空表'
+        except Exception as ex:
+            last = str(ex)[:160]
+        if i < tries - 1:
+            time.sleep(3 * (i + 1))
+    return [], last
+
+
+def _api_get(path, params=None, timeout=60):
+    """GET 自建 Worker；失败抛错。密钥只从环境变量读，绝不写进代码。"""
+    from urllib.parse import urlencode
+    import urllib.request
+    base = (os.environ.get('ETF_API_BASE') or
+            'https://a-stock-api.wj4020410.workers.dev').rstrip('/')
+    url = base + path + ('?' + urlencode(params) if params else '')
+    k = os.environ.get('A_STOCK_API_KEY', '')
+    headers = {'User-Agent': 'etf-lsi-ratios/1.0'}
+    if k:
+        headers['X-API-Key'] = k
+    with urllib.request.urlopen(
+            urllib.request.Request(url, headers=headers), timeout=timeout) as resp:
+        return json.loads(resp.read().decode('utf-8'))
+
+
 def get_series(code, fq=None):
-    """周K全周期：按 4 年一段拼接"""
+    """周K全周期：按 4 年一段拼接；csindex: 前缀改走 /api/csindex"""
+    if code.startswith('csindex:'):
+        sym = code.split(':', 1)[1]
+        rows, err = get_series_csindex(sym, '%d-01-01' % SEG_FROM,
+                                       datetime.date.today().isoformat())
+        if rows:
+            print('  %-16s %s  %d 根  %s ~ %s   (csindex日K聚合)' %
+                  (code, PERIOD, len(rows), rows[0][0], rows[-1][0]), flush=True)
+            return dict(rows), []
+        print('  !! %s 取数失败：%s' % (code, err or '空数据'), flush=True)
+        return {}, []
     segs, out, empty = [], {}, []
     y = SEG_FROM
     today = datetime.date.today().isoformat()
@@ -206,7 +270,7 @@ def build(pair, series_map):
 
 
 def main():
-    print('=' * 20, '三大风格 / 股债比价取数（%sK 分段全周期）' % PERIOD, '=' * 20)
+    print('=' * 20, '四大风格 / 股债比价取数（%sK 分段全周期）' % PERIOD, '=' * 20)
     codes = []
     for p in RATIO_PAIRS:
         for c, f, _ in (p['num'], p['den']):
