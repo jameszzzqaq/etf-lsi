@@ -6,7 +6,7 @@
   ① 顶部三张状态卡（沪深300 / 创业板 / 宏观 LSI）
   ② 沪深300 双轴交互图（悬停看每日明细）
   ③ 创业板 双轴交互图
-  ④ 三大风格 / 股债比价全周期百分位
+  ④ 四大风格 / 股债比价全周期百分位
   ⑤ 宏观 LSI 核心面板 + V57 资金流向雷达
   ⑥ 20 项背景报警全量明细表（原始数据 / 公式 / 结果 / 阈值 / 红绿报警）
   ⑦ 正面宽松状态指示
@@ -280,7 +280,7 @@ border-radius:10px;padding:12px 15px;margin-bottom:10px;font-size:12.8px;line-he
 <div id="trackBlocks"></div>
 
 <div class="panel" id="ratioPanel" style="display:none">
-  <h2>④ 三大风格 / 股债比价 · 全周期历史百分位</h2>
+  <h2>④ 四大风格 / 股债比价 · 全周期历史百分位</h2>
   <div class="hint">三个比值均为「防御性资产 ÷ 进攻性资产」，故 <b>比值上行 = 防御占优</b>，可直接横向对比。
   曲线为周K；百分位基于各标的上市以来<b>全周期</b>全样本（按周分段抓取拼接）。
   绿区 = 分位 0~20，红区 = 分位 80~100。<b style="color:#F5A623">注意：</b>「谁占优」说的是过去谁跑赢，
@@ -648,7 +648,7 @@ function drawTrack(key){
 }
 D.order.forEach(drawTrack);
 
-/* ---------- 三大比价 ---------- */
+/* ---------- 四大比价 ---------- */
 if (D.ratios && D.ratios.items) {
   $('ratioPanel').style.display='';
   let h='';
