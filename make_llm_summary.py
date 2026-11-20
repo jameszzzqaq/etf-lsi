@@ -217,6 +217,7 @@ def build(d):
             ('ETF 总市值 `etf_mv`', num(yi(sm.get('etf_mv'))) + ' 亿元'),
             ('指数流通市值 `idx_mv`', num(yi(sm.get('idx_mv'))) + ' 亿元'),
             ('持仓占比历史分位 `hold_pct_pos`', pctv(sm.get('hold_pct_pos'))),
+            ('持仓占比近5年分位 `hold_rank5y`', pctv(sm.get('hold_rank5y'))),
             ('指数点位历史分位 `idx_pct_pos`', pctv(sm.get('idx_pct_pos'))),
             ('持仓占比斜率 `hold_slope`', num(sm.get('hold_slope'), 4)),
             ('指数斜率 `idx_slope`', num(sm.get('idx_slope'), 4)),
