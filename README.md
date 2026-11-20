@@ -1727,6 +1727,29 @@ Python 的 `compile()` / `ast.parse()` **检查不出** JS 字符串里的语法
 
 **回滚**：`git revert 21fca49b`（展示层）+ 视需要 revert `8dc1cb3e` / `a9536702`（数据层）；全是可逆提交，无 force push。
 
+### F. 2026-11-21 续：LSI 压力指数 / 净流动性 GLI 也补近5年分位
+
+用户要求把顶部还剩两张没有分位的卡（宏观 LSI 压力指数、美联储净流动性 GLI）同样做成近5年分位。
+
+| 文件 | 改动 |
+| :--- | :--- |
+| `fetch_fred_lsi.py` | `_rank5y()` 增算 `lsi_rank5y`（LSI 序列）与 `gli_rank5y`（GLI 序列），写入 `latest` / `core` |
+| `make_dashboard.py` | LSI 卡副标题「紧张 ≥20｜极端 ≥50」后追加分位；GLI 卡「WALCL−TGA−RRP｜20日 x%」后追加分位；**固定阈值与公式文字一字未动** |
+| `make_llm_summary.py` | CORE_CN 补 2 个字段中文名；核心段说明由「4 张卡」改为「6 张卡」 |
+
+**口径**：仍是近 1250 交易日 percentile rank（0~100）。注意 GLI 的 5 年分位低（18.2%）是**好消息含义**——
+GLI 越高＝净流动性越宽松；与信用利差等「越高越坏」的指标方向相反，读分位时别套用同一个好坏直觉。
+
+| 项目 | 结果 |
+| :--- | :--- |
+| 展示层 commit | `2b4343b0`（fetch_fred_lsi.py + make_dashboard.py + make_llm_summary.py，原子提交） |
+| workflow run | `44774945524`，约 4 分钟，`success` |
+| 本地校验 | 3 个 `.py` 过 `ast.parse`；看板 `<script>` 跑 `node --check` 通过 |
+| 线上校验 | gh-pages index.html 583,732 字节，`node --check` 通过；两卡分位字段命中、固定阈值文字仍在 |
+| 线上读数（asof 2026-11-20） | LSI 14.0bp → 近5年分位 **91.6%**；GLI 5.824T → **18.2%** |
+
+**回滚**：`git revert 2b4343b0`；纯增量字段，删掉不影响 LSI/GLI 原值与报警判定。
+
 ---
 
 ## ☕ 支持一下（打赏）
