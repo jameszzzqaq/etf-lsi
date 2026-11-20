@@ -365,6 +365,20 @@ def compute(cal, raw):
     rotten_p10, rotten_p90 = _pct_pair(rotten)
     dfii10_p10, dfii10_p90 = _pct_pair(dfii10)
 
+    # v4：当前值在近 5 年（1250 交易日）序列中的 percentile rank（0~100）
+    # 与 p10/p90 不同：rank 是一个可直接读懂的「当前处在历史百分之几」的数字。
+    _rb = T['rank_lookback']
+    def _rank5y(arr):
+        cur = arr[-1] if arr else None
+        w = [x for x in (arr[-_rb:] if len(arr) > _rb else arr) if x is not None]
+        if cur is None or not w:
+            return None
+        return sum(1 for x in w if x <= cur) / len(w) * 100.0
+    credit_rank5y = _rank5y(credit)
+    ccc_rank5y = _rank5y(ccc)
+    rotten_rank5y = _rank5y(rotten)
+    dfii10_rank5y = _rank5y(dfii10)
+
     def _b(i):
         """计算第 i 日的全部布尔量与派生量"""
         v = lambda arr: arr[i] if i < len(arr) else None
@@ -387,6 +401,8 @@ def compute(cal, raw):
             'ccc_p10': v(ccc_p10), 'ccc_p90': v(ccc_p90),
             'rotten_p10': v(rotten_p10), 'rotten_p90': v(rotten_p90),
             'dfii10_p10': v(dfii10_p10), 'dfii10_p90': v(dfii10_p90),
+            'credit_rank5y': credit_rank5y, 'ccc_rank5y': ccc_rank5y,
+            'rotten_rank5y': rotten_rank5y, 'dfii10_rank5y': dfii10_rank5y,
             'tlc': v(tlc), 'impulse': v(impulse),
             'dxy': v(dxy), 'dxy_ma': v(dxy_ma),
             'walcl_T': v(walcl_T), 'wtregen_T': v(wtregen_T), 'rrp_B': v(rrp_B),
@@ -892,6 +908,8 @@ def main():
             'ccc_p10': safe(v['ccc_p10']), 'ccc_p90': safe(v['ccc_p90']),
             'rotten_p10': safe(v['rotten_p10'], 3), 'rotten_p90': safe(v['rotten_p90'], 3),
             'dfii10_p10': safe(v['dfii10_p10']), 'dfii10_p90': safe(v['dfii10_p90']),
+            'credit_rank5y': safe(v['credit_rank5y'], 1), 'ccc_rank5y': safe(v['ccc_rank5y'], 1),
+            'rotten_rank5y': safe(v['rotten_rank5y'], 1), 'dfii10_rank5y': safe(v['dfii10_rank5y'], 1),
             'cpi_yoy': safe(v['cpi_yoy']),
             'gli': safe(v['gli'], 3), 'walcl_T': safe(v['walcl_T'], 3),
             'wtregen_T': safe(v['wtregen_T'], 3), 'rrp_T': safe(v['rrp_T'], 4),
