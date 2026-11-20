@@ -1626,6 +1626,56 @@ W47 两条腿日期不相等 → 交集里整周消失 → 整条退到上周五
 
 ---
 
+## 附录 · 2026-11-20 顶部卡片扩容 + 持仓占比分位（给维护者 / 给 AI 读）
+
+### A. 为什么改
+
+用户要求：顶部 9 格扩容；信用利差单独成卡；新增 CCC 级利差、CCC 相对溢价倍数、10Y 实际利率；两张持仓占比卡显示近 5 年分位。
+
+### B. 改了什么（5 个源码文件 + 本文档）
+
+| 文件 | 改动 |
+| :--- | :--- |
+| `config.py` | `FRED_SERIES` 注册 `BAMLH0A3HYC`（CCC 级及以下 OAS）；`LSI_TH` 新增 `ccc_tight=10` / `ccc_loose=8.23` / `rotten_high=3` / `rotten_low=2` / `pct_lookback=780` / `pct_low=10` / `pct_high=90` |
+| `fetch_fred_lsi.py` | `_DAILY` 加入 `BAMLH0A3HYC`（进交易日历）；`compute()` 算 ccc/rotten 与 4 组 p10/p90（滚动 3 年、无前视）；写入 latest/hist/core |
+| `make_dashboard.py` | 顶部 9→13 格：RRP / 信用利差OAS / CCC级利差 / CCC相对溢价倍数 / 10Y实际利率；卡片副标题加分位。持仓占比卡增加 `hold_rank5y` 显示 |
+| `analyze_report.py` | 新增 `hold_rank5y` = 近 1250 交易日 percentile rank |
+| `make_llm_summary.py` | CORE_CN 补 10 个新字段中文名；摘要表补 `hold_rank5y` |
+
+### C. 口径说明（勿混用）
+
+- **CCC 相对溢价倍数** = `BAMLH0A3HYC ÷ BAMLH0A0HYM2`，两个字串单位都是 %，比值无量纲。阈值：>3 红（CCC 相对整体高收益显著恶化），<2 绿。
+- **p10/p90 分位**：`common.percentile_linear_interpolation()` 滚动 780 交易日（≈3 年），逐日算、无前视。它只是**参考小字**，判色仍用固定阈值，避免极端值推高 p90 导致报警失灵。
+- **持仓占比两个分位不是一回事**：`hold_pct_pos` = 250 日 min-max 归一化位置（参与 Spread 计算，勿删）；`hold_rank5y` = 近 1250 日 percentile rank（仅展示）。
+
+### D. ⚠️ 本次踩的最大的坑：JS 语法错误导致页面白屏
+
+**现象**：改完 expo 后线上页面只剩标题「A股双宽基 ETF 持仓背离 + 宏观 LSI 流动性压力 · 三合一监测」，其余全空。
+
+**根因**：`make_dashboard.py` 里生成的 JS 一行多写了一个右括号：
+
+```
+// 错误（3 个右括号）
+(gt(c.ccc,999.999)?'var(--up)':(lt(c.ccc,823.001)?'var(--down)':'var(--txt)')))
+// 正确（2 个）
+(gt(c.ccc,999.999)?'var(--up)':(lt(c.ccc,823.001)?'var(--down)':'var(--txt)'))
+```
+
+Python 的 `compile()` / `ast.parse()` **检查不出** JS 字符串里的语法错误；一个括号错就整段 script 不执行、整页只剩静态标题。
+
+**新增硬约束（下次必做）**：改 `make_dashboard.py` 后必须做两件事：
+1. `python -c "ast.parse(open('make_dashboard.py',encoding='utf-8').read())"` —— 过 Python 语法；
+2. 把生成的 `etf_lsi_dashboard.html` 里的 `<script>…</script>` 提取出来，存成临时 `.js`，跑 `node --check 临时.js` —— 过 JS 语法。node 在 Actions 里现成（westock-data 要用），本地 PATH 也有。**只过第 1 步不算验证完成。**
+
+### E. 验证与回滚
+
+- 本地：`ast.parse` 5 个文件通过；`compute()` 用构造数据跑通，10 个新字段全部产出；分位算法单测（最高值=100%、中位=50.1%）通过。
+- 线上：`ETF + LSI daily report` 串行触发 3 次（run `44767995745` / `44769076738` / `44769953620`），最终一次包含括号修复。
+- 令牌保密：令牌只在对话中使用，**未写入任何仓库文件**；工作区全盘正则扫描 `ghp_` / `github_pat_` 0 命中。
+- 回滚：`git revert <对应 commit>`，不用 force push。括号修复 commit `c57427c4`。
+
+---
+
 ## ☕ 支持一下（打赏）
 
 先说声谢谢。感谢你点进这个仓库、读到这里，也感谢每一位把看板放进收藏夹、每天顺手看一眼的朋友。
