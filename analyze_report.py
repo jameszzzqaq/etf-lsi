@@ -259,6 +259,11 @@ def analyze_track(key):
     net5_ratio = (sh_now / sh_5 - 1) * 100 if sh_5 else 0.0
 
     cur_spread, hold_now, idx_now = spread[-1], hold[-1], idx[-1]
+    # v3：持仓占比「近5年 percentile rank」= 当前值在最近约1250个交易日中的排名位置
+    # 与 hold_pct_pos（250日 min-max 归一化位置）是两个不同指标，勿混用。
+    _W5Y = 1250
+    _w = hold[-_W5Y:] if len(hold) > _W5Y else hold
+    hold_rank5y = sum(1 for x in _w if x <= hold[-1]) / len(_w) * 100.0 if _w else None
     significant_redeem = (net5 < 0) or (net1 < 0 and abs(net1) > 0.5 * max(abs(net5), 1e-9))
     significant_subscribe = net5 > 0
 
@@ -294,6 +299,7 @@ def analyze_track(key):
         net5=net5, net1=net1, net5_ratio=net5_ratio,
         etf_mv=rows[-1]['etf_mv'], idx_mv=rows[-1]['idx_mv'],
         hold_pct_pos=hold_pct[-1], idx_pct_pos=idx_pct[-1],
+        hold_rank5y=hold_rank5y,
         n=len(rows), span=(dates[0], dates[-1]),
         labels=lbl,
     )
