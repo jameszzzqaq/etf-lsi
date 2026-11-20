@@ -423,14 +423,22 @@ for (const k of D.order) {
 }
 if (D.lsi) {
   const c = D.lsi.core;
+  // v3：近3年 p10/p90 分位小字（credit/ccc/dfii10 单位 bp，rotten 为倍数）
+  const fPct = (lo, hi, unit) => (lo == null || hi == null)
+      ? '3年分位 —'
+      : '3年 p10 ' + fmt(lo, 0) + unit + ' / p90 ' + fmt(hi, 0) + unit;
   const lsiCol = (gt(c.lsi,49.999)?'#8B1A1A':(gt(c.lsi,19.999)?'var(--up)':(lt(c.lsi,0)?'var(--down)':'var(--txt)')));
   ch += '<div class="card"><div class="k">宏观 LSI 压力指数</div><div class="v" style="color:' + lsiCol + '">' + fmt(c.lsi,1) + ' bp</div><div class="d">紧张 ≥20｜极端 ≥50</div></div>' +
         '<div class="card"><div class="k">美联储净流动性 GLI</div><div class="v" style="color:var(--blue)">' + fmt(c.gli,3) + ' T</div><div class="d">WALCL−TGA−RRP｜20日 ' + sign(c.tlc,2) + '%</div></div>' +
-        '<div class="card"><div class="k">RRP 缓冲垫 / 信用利差</div><div class="v" style="color:' + (lt(c.rrp_pct,5)?'var(--up)':'var(--down)') + '">' + fmt(c.rrp_pct,1) + '%</div><div class="d">RRP ' + fmt(c.rrp_T,3) + ' T｜利差 ' + fmt(c.credit,0) + ' bp</div></div>';
+        '<div class="card"><div class="k">RRP 缓冲垫</div><div class="v" style="color:' + (lt(c.rrp_pct,5)?'var(--up)':'var(--down)') + '">' + fmt(c.rrp_pct,1) + '%</div><div class="d">RRP ' + fmt(c.rrp_T,3) + ' T｜峰值占比</div></div>' +
+        '<div class="card"><div class="k">信用利差 OAS（BB 及以下）</div><div class="v" style="color:' + (gt(c.credit,399.999)?'var(--up)':'var(--txt)') + '">' + fmt(c.credit,0) + ' bp</div><div class="d">报警 &gt;400 bp｜' + fPct(c.credit_p10,c.credit_p90,'bp') + '</div></div>' +
+        '<div class="card"><div class="k">CCC 级利差</div><div class="v" style="color:' + (gt(c.ccc,999.999)?'var(--up)':(lt(c.ccc,823.001)?'var(--down)':'var(--txt)'))) + '">' + fmt(c.ccc/100.0,2) + '%</div><div class="d">紧缩 &gt;10%｜泛滥 &lt;8.23%｜' + fPct(c.ccc_p10,c.ccc_p90,'bp') + '</div></div>' +
+        '<div class="card"><div class="k">CCC 相对溢价倍数</div><div class="v" style="color:' + (gt(c.rotten,2.999)?'var(--up)':(lt(c.rotten,2.001)?'var(--down)':'var(--txt)'))) + '">' + fmt(c.rotten,2) + '</div><div class="d">CCC OAS ÷ HY OAS｜&gt;3 红 &lt;2 绿｜' + fPct(c.rotten_p10,c.rotten_p90,'') + '</div></div>' +
+        '<div class="card"><div class="k">10Y 实际利率 DFII10</div><div class="v" style="color:' + (gt(c.dfii10,219.999)?'var(--up)':(lt(c.dfii10,0)?'var(--down)':'var(--txt)'))) + '">' + fmt(c.dfii10/100.0,2) + '%</div><div class="d">紧缩 &gt;2.20%｜极宽 &lt;0.00%｜' + fPct(c.dfii10_p10,c.dfii10_p90,'bp') + '</div></div>';
 }
 $('topCards').innerHTML = ch;
 
-/* ---------- 跨资产比价 / 风险偏好（4 张卡，样式与顶部 9 张一致） ---------- */
+/* ---------- 跨资产比价 / 风险偏好（4 张卡，样式与顶部卡片一致） ---------- */
 const MR = D.signals && D.signals.macro_ratios;
 if (MR && MR.gold_silver && MR.gold_oil && MR.copper_gold && MR.kospi_gold) {
   const pct1 = (v) => (v === null || v === undefined) ? '—' : sign(v, 1) + '%';
