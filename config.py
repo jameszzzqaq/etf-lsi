@@ -151,6 +151,7 @@ FRED_SERIES = {
     'T10YIE':         {'label': '10年期盈亏平衡通胀预期',           'unit': 'pct',      'to': 'bps'},
     'DFII10':         {'label': '10年期实际利率 (TIPS)',            'unit': 'pct',      'to': 'bps'},
     'BAMLH0A0HYM2':   {'label': '美国高收益债信用利差 (OAS)',       'unit': 'pct',      'to': 'bps'},
+    'BAMLH0A3HYC':    {'label': 'CCC级及以下债信用利差 (OAS)',     'unit': 'pct',      'to': 'bps'},
     'CPIAUCSL':       {'label': '美国 CPI 物价指数',                'unit': 'index',    'to': 'yoy_bps'},
     'WALCL':          {'label': '美联储总资产',                     'unit': 'millions', 'to': 'T'},
     'WTREGEN':        {'label': '财政部一般账户 TGA',                'unit': 'millions', 'to': 'T'},
@@ -182,6 +183,14 @@ LSI_TH = {
     'credit_roc_th': 10.0,              # 信用利差急升预警阈值(%)
     'gold_th': -350.0,                  # 黄金到顶判定阈值 (EFFR-CPI, bps)
     'credit_th': 400.0,                 # 危机判定信用利差阈值 (bps)
+    # v3 顶部卡片：固定阈值 + 近3年 p10/p90 分位参考
+    'ccc_tight': 10.0,                  # CCC 级利差紧缩线 (%)，> 此值红
+    'ccc_loose': 8.23,                  # CCC 级利差泛滥线 (%)，< 此值绿
+    'rotten_high': 3.0,                 # CCC 相对溢价倍数红线
+    'rotten_low': 2.0,                  # CCC 相对溢价倍数绿线
+    'pct_lookback': 780,                # 分位回看窗口（交易日）≈ 3 年
+    'pct_low': 10,                      # 分位下沿 p10
+    'pct_high': 90,                     # 分位上沿 p90
     'reserve_gdp_threshold': 0.11,      # 准备金/GDP 不足阈值
     'reserve_assets_threshold': 0.11,   # 准备金/银行总资产 不足阈值
     'ma_period': 10,                    # 美联储黄金到顶 MA 周期
