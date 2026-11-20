@@ -1713,7 +1713,19 @@ Python 的 `compile()` / `ast.parse()` **检查不出** JS 字符串里的语法
 
 ### E. 实测记录
 
-（待流水线跑完后回填 run id、线上文案与分位读数、node --check 结果。）
+| 项目 | 结果 |
+| :--- | :--- |
+| 数据层（前序 commit） | `config.py` `8dc1cb3e` 加 `rank_lookback=1250`；`fetch_fred_lsi.py` `a9536702` 写 4 个 `*_rank5y` 到 latest/core |
+| 展示层 commit | `21fca49b`（make_dashboard.py + make_llm_summary.py + README.md，一次原子提交） |
+| 触发方式 | **手动 `workflow_dispatch`**（改的两个 .py 不在 `daily.yml` 的 `on.push.paths` 内，push 不会自动跑） |
+| workflow run | **`44772957858`**，[日志](https://github.com/wj624/etf-lsi/actions/runs/44772957858)，约 3 分钟，`success` |
+| 本地语法 | 3 个 `.py` 全过 `ast.parse`；把 `make_dashboard.py` 的 `<script>` 抽出跑 `node --check` 通过 |
+| 线上语法 | 下载 gh-pages `index.html`（583,721 字节），提取 `<script>`（570,239 字节）跑 **`node --check` 通过** |
+| 线上文案 | 4 张卡均含「近5年分位」，固定阈值文字仍在；旧「3年 p10」**0 残留** |
+| 线上分位读数（asof 2026-11-20） | 信用利差 352bp → 近5年分位 **91.9%**；CCC 级利差 1361bp → **100.0%**；CCC 相对溢价倍数 3.866 → **93.5%**；DFII10 288bp → **99.0%** |
+| 保密 | 令牌只在对话与 API 调用中使用，未写入任何仓库文件 |
+
+**回滚**：`git revert 21fca49b`（展示层）+ 视需要 revert `8dc1cb3e` / `a9536702`（数据层）；全是可逆提交，无 force push。
 
 ---
 
