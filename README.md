@@ -1750,6 +1750,25 @@ GLI 越高＝净流动性越宽松；与信用利差等「越高越坏」的指�
 
 **回滚**：`git revert 2b4343b0`；纯增量字段，删掉不影响 LSI/GLI 原值与报警判定。
 
+### G. 2026-11-21 续 2：银行准备金卡补近5年分位
+
+| 文件 | 改动 |
+| :--- | :--- |
+| `fetch_fred_lsi.py` | `_rank5y()` 增算 `wrb_T_rank5y`（`WRBWFRBL` 周口径准备金，即卡片显示的 3.002T），写入 latest/core |
+| `make_dashboard.py` | LSI 详情区「银行准备金」卡副标题「占GDP X%｜占银行总资产 X%」后追加分位；因顶部 `rankPct` 是另一函数作用域，在详情区另定义同名本地函数（node --check 验证无冲突） |
+| `make_llm_summary.py` | CORE_CN 补字段中文名，口径说明同步 |
+
+| 项目 | 结果 |
+| :--- | :--- |
+| 展示层 commit | `153293aa`（3 文件原子提交） |
+| workflow run | `44777884279`，约 3 分钟，`success` |
+| 校验 | 本地 ast.parse + node --check；线上校验通过 |
+| 线上读数（asof 2026-11-20） | 银行准备金 3.002 T → 近5年分位 **17.2%**；占GDP 9.09% / 占银行总资产 11.50% 判定文字不变 |
+
+**回滚**：`git revert 153293aa`。
+> 核验踩坑：`raw.githubusercontent.com` 对 gh-pages 的 index.html 有 CDN 缓存，run 刚跑完时可能拿到旧版（字节数与旧版一致、新字段 0 命中）。
+> **正确做法**：走 contents API `?ref=gh-pages` 取 blob（本次 get_file_contents 工具同理），以 blob 里的真值为准，不要只信 raw CDN。
+
 ---
 
 ## ☕ 支持一下（打赏）
