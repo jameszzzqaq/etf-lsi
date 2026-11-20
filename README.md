@@ -1636,16 +1636,17 @@ W47 两条腿日期不相等 → 交集里整周消失 → 整条退到上周五
 
 | 文件 | 改动 |
 | :--- | :--- |
-| `config.py` | `FRED_SERIES` 注册 `BAMLH0A3HYC`（CCC 级及以下 OAS）；`LSI_TH` 新增 `ccc_tight=10` / `ccc_loose=8.23` / `rotten_high=3` / `rotten_low=2` / `pct_lookback=780` / `pct_low=10` / `pct_high=90` |
-| `fetch_fred_lsi.py` | `_DAILY` 加入 `BAMLH0A3HYC`（进交易日历）；`compute()` 算 ccc/rotten 与 4 组 p10/p90（滚动 3 年、无前视）；写入 latest/hist/core |
+| `config.py` | `FRED_SERIES` 注册 `BAMLH0A3HYC`（CCC 级及以下 OAS）；`LSI_TH` 新增 `ccc_tight=10` / `ccc_loose=8.23` / `rotten_high=3` / `rotten_low=2` / `pct_lookback=780` / `pct_low=10` / `pct_high=90`；v4 加 `rank_lookback=1250` |
+| `fetch_fred_lsi.py` | `_DAILY` 加入 `BAMLH0A3HYC`（进交易日历）；`compute()` 算 ccc/rotten 与 4 组 p10/p90（滚动 3 年、无前视）；v4 再算 4 个 `*_rank5y` 并写入 latest/core |
 | `make_dashboard.py` | 顶部 9→13 格：RRP / 信用利差OAS / CCC级利差 / CCC相对溢价倍数 / 10Y实际利率；卡片副标题加分位。持仓占比卡增加 `hold_rank5y` 显示 |
 | `analyze_report.py` | 新增 `hold_rank5y` = 近 1250 交易日 percentile rank |
-| `make_llm_summary.py` | CORE_CN 补 10 个新字段中文名；摘要表补 `hold_rank5y` |
+| `make_llm_summary.py` | CORE_CN 补 10 个新字段中文名；摘要表补 `hold_rank5y`；v4 再补 4 个 `*_rank5y` 中文名与单位说明 |
 
 ### C. 口径说明（勿混用）
 
 - **CCC 相对溢价倍数** = `BAMLH0A3HYC ÷ BAMLH0A0HYM2`，两个字串单位都是 %，比值无量纲。阈值：>3 红（CCC 相对整体高收益显著恶化），<2 绿。
-- **p10/p90 分位**：`common.percentile_linear_interpolation()` 滚动 780 交易日（≈3 年），逐日算、无前视。它只是**参考小字**，判色仍用固定阈值，避免极端值推高 p90 导致报警失灵。
+- **近5年分位（顶部 4 张宏观卡的小字）**：`credit_rank5y` / `ccc_rank5y` / `rotten_rank5y` / `dfii10_rank5y` = 当前值在最近 **1250 个交易日**（≈5 年）非 null 序列中的 **percentile rank**（0~100，越大表示当前读数越处于历史高位）。显示为「近5年分位 98.8%」，**数值越大＝该指标越极端**。它只是**参考小字**，**判色仍用固定阈值**（>400bp / >10%<8.23% / >3<2 / >2.20%<0.00% 一律不变），避免极端值改变阈值口径导致报警失灵。
+- **p10/p90 仍保留在数据层**：`common.percentile_linear_interpolation()` 滚动 780 交易日（≈3 年），逐日算、无前视；`core` 里 `credit_p10/p90`、`ccc_p10/p90`、`rotten_p10/p90`、`dfii10_p10/p90` 照常输出给 `data.json` / `llms.txt`，只是看板小字不再用它。两套口径**不要混用**：p10/p90 是「历史分位点的值」，rank5y 是「当前值处在历史的百分之几」。
 - **持仓占比两个分位不是一回事**：`hold_pct_pos` = 250 日 min-max 归一化位置（参与 Spread 计算，勿删）；`hold_rank5y` = 近 1250 日 percentile rank（仅展示）。
 
 ### D. ⚠️ 本次踩的最大的坑：JS 语法错误导致页面白屏
@@ -1673,6 +1674,46 @@ Python 的 `compile()` / `ast.parse()` **检查不出** JS 字符串里的语法
 - 线上：`ETF + LSI daily report` 串行触发 3 次（run `44767995745` / `44769076738` / `44769953620`），最终一次包含括号修复。
 - 令牌保密：令牌只在对话中使用，**未写入任何仓库文件**；工作区全盘正则扫描 `ghp_` / `github_pat_` 0 命中。
 - 回滚：`git revert <对应 commit>`，不用 force push。括号修复 commit `c57427c4`。
+
+---
+
+## 附录 · 2026-11-20 续：4 张宏观卡小字改为「近5年分位」（给维护者 / 给 AI 读）
+
+### A. 用户要什么
+
+4 张卡（信用利差 OAS / CCC 级利差 / CCC 相对溢价倍数 / 10Y 实际利率）原来的小字
+「3年 p10 350 / p90 390」太专业、不好懂，改成「近5年分位 98.8%」这种一眼能读的形式。
+**带固定值的判色文字一律不变**，只换固定值后面的小字。
+
+### B. 改了什么（3 个源码文件 + 本文档）
+
+| 文件 | 改动 |
+| :--- | :--- |
+| `config.py` | `LSI_TH` 加 `rank_lookback = 1250`（近5年交易日窗口） |
+| `fetch_fred_lsi.py` | `compute()` 里 `_rank5y()` 算 4 个 rank；写入 `latest` 与 `core`（`safe(v,1)`） |
+| `make_dashboard.py` | 删 `fPct()`，改 `rankPct()`；4 张卡小字由 `p10/p90` 改读 `*_rank5y`；**固定阈值文字与颜色逻辑一个字节未动** |
+| `make_llm_summary.py` | CORE_CN 补 4 个 rank 中文名；核心段说明「是 0~100 百分数、不是 bps」 |
+
+**分位口径**：`rank = 窗口内 <= 当前值的个数 / 窗口内非 null 总数 × 100`，即 percentile rank；
+窗口 1250 交易日 ≈ 5 年。`p10/p90` 仍照常输出给 `data.json` / `llms.txt`，但看板不再展示。
+
+### C. 验证硬约束（沿用本附录 D 节，改 `make_dashboard.py` 必做）
+
+1. `python -c "import ast;ast.parse(open('make_dashboard.py',encoding='utf-8').read())"` —— 过 Python 语法；
+2. 生成 HTML 后把 `<script>` 提取成临时 `.js`，跑 `node --check` —— 过 JS 语法。
+   **Python `ast.parse` 检查不出 JS 字符串里的括号错误**（白屏事故根因），只过第 1 步不算完成。
+3. 线上核验：从 gh-pages 的 `index.html` 里确认 4 张卡文案含「近5年分位 XX.X%」、固定阈值文字仍在、无 `3年 p10` 残留。
+
+### D. 回滚与边界
+
+- `git revert <本次 commit>` 即可回退；`rank_lookback` / `*_rank5y` 都是纯增量字段，删掉不影响 p10/p90 与 LSI 计算。
+- 不得改动固定阈值判色逻辑（>400bp / >10% & <8.23% / >3 & <2 / >2.20% & <0.00%）。
+- 不得把 `rank5y` 当成 bps 或分位小数（0~1）使用——它是 0~100 的百分数。
+- 数据源保密要求不变：令牌只在对话与 API 调用中使用，绝不写入任何仓库文件。
+
+### E. 实测记录
+
+（待流水线跑完后回填 run id、线上文案与分位读数、node --check 结果。）
 
 ---
 
