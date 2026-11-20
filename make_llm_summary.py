@@ -38,6 +38,12 @@ CORE_CN = {
     'us10y': '10 年期美债收益率', 'yield_spread': '10Y-2Y 期限利差',
     't10yie': '10Y 盈亏平衡通胀预期', 'dfii10': '10Y 实际利率 (TIPS)',
     'credit': '高收益债信用利差 (OAS)', 'credit_roc': '信用利差变化率',
+    # v3 新增：CCC 级利差、CCC 相对溢价倍数与近 3 年 p10/p90 分位参考
+    'ccc': 'CCC 级及以下信用利差 (bp)', 'rotten': 'CCC 相对溢价倍数 (CCC÷HY)',
+    'credit_p10': '信用利差 3年 p10 (bp)', 'credit_p90': '信用利差 3年 p90 (bp)',
+    'ccc_p10': 'CCC 利差 3年 p10 (bp)', 'ccc_p90': 'CCC 利差 3年 p90 (bp)',
+    'rotten_p10': '相对溢价倍数 3年 p10', 'rotten_p90': '相对溢价倍数 3年 p90',
+    'dfii10_p10': '实际利率 3年 p10 (bp)', 'dfii10_p90': '实际利率 3年 p90 (bp)',
     'cpi_yoy': '美国 CPI 同比', 'gli': '全球流动性 GLI',
     'walcl_T': '美联储总资产 WALCL', 'wtregen_T': 'TGA 财政部一般账户',
     'rrp_T': 'RRP 逆回购余额', 'rrp_pct': 'RRP 占峰值比例',
