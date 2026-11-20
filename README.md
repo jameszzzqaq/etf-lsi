@@ -1769,6 +1769,24 @@ GLI 越高＝净流动性越宽松；与信用利差等「越高越坏」的指�
 > 核验踩坑：`raw.githubusercontent.com` 对 gh-pages 的 index.html 有 CDN 缓存，run 刚跑完时可能拿到旧版（字节数与旧版一致、新字段 0 命中）。
 > **正确做法**：走 contents API `?ref=gh-pages` 取 blob（本次 get_file_contents 工具同理），以 blob 里的真值为准，不要只信 raw CDN。
 
+### H. 2026-11-21 续 3：顶部卡片区新增「银行准备金」卡（13→14 张）
+
+用户要求在顶部卡片区也显示银行准备金，显示内容与 LSI 详情区那张一致。
+
+| 项目 | 内容 |
+| :--- | :--- |
+| 改动 | `make_dashboard.py` LSI 顶部卡片块末尾追加 1 张卡；值 `wrb_T`、副标题「占GDP X%｜占银行总资产 X%｜近5年分位」、判色沿用详情区（reserve_gdp<11 且 reserve_assets<11 标红）；数据层 `wrb_T_rank5y` 已在 `153293aa` 落地，本次无需改取数 |
+| 布局 | `.cards` 是 `grid-template-columns:repeat(auto-fit,minmax(162px,1fr))`，14 张自动换行，无需改 CSS |
+| commit | `5aab1c56` |
+| workflow run | `44779590368`，约 4 分钟，`success` |
+| 校验 | 本地 ast.parse + node --check；线上 index.html 581,737 字节，node --check 通过；顶部卡片统计 = 14 张（6 双宽基 + 8 LSI），银行准备金卡命中 |
+| 线上读数 | 银行准备金 3.002 T｜占GDP 9.09%｜占银行总资产 11.50%｜近5年分位 17.2% |
+
+> 核验踩坑补充：统计顶部卡片数要数 `let ch = ''` 到 `$('topCards').innerHTML = ch` 之间的 `ch +=` 累加，
+> 其中双宽基 `for` 循环体里的 3 张要 ×2（两个 track），LSI 块 8 张，合计 14；不要只数赋值语句 `= ch`。
+
+**回滚**：`git revert 5aab1c56`。
+
 ---
 
 ## ☕ 支持一下（打赏）
