@@ -31,7 +31,7 @@ CAL_DAYS = int(os.environ.get('LSI_CAL_DAYS', '1300'))
 
 # 参与构造交易日历的日频序列
 _DAILY = ['SOFR', 'RRPONTSYAWARD', 'EFFR', 'IORB', 'DGS2', 'DGS10',
-          'T10YIE', 'DFII10', 'BAMLH0A0HYM2', 'RRPONTSYD']
+          'T10YIE', 'DFII10', 'BAMLH0A0HYM2', 'BAMLH0A3HYC', 'RRPONTSYD']
 
 # 不参与日历构造的日频序列（只影响「日历有哪些天」，不影响取数，值照样进 LSI 计算）：
 #   IORB（准备金余额利率）是政策利率，FRED 会对**未来日期**预填同一个值——
@@ -223,6 +223,10 @@ def compute(cal, raw):
     t10yie = to_bps(ffill(cal, raw.get('T10YIE', {})))
     dfii10 = to_bps(ffill(cal, raw.get('DFII10', {})))
     credit = to_bps(ffill(cal, raw.get('BAMLH0A0HYM2', {})))
+    # v3：CCC 级及以下 OAS（bps）与「CCC 相对溢价倍数」= CCC OAS / 整体 HY OAS
+    ccc = to_bps(ffill(cal, raw.get('BAMLH0A3HYC', {})))
+    rotten = [None if (a is None or b is None or not b) else a / b
+              for a, b in zip(ccc, credit)]
     cpi = cpi_yoy_bps(cal, raw.get('CPIAUCSL', {}))
 
     walcl_T = to_T_millions(ffill(cal, raw.get('WALCL', {})))        # 美联储总资产 T
@@ -348,6 +352,19 @@ def compute(cal, raw):
     gli_lo = [common.percentile_linear_interpolation(gli[:i + 1], T['gli_lookback'], T['gli_low_pct'])
               for i in range(n)]
 
+    # v3 顶部卡片 p10/p90 参考分位：回看 3 年（780 交易日），逐日滚动、无前视偏差
+    _plb, _plo, _phi = T['pct_lookback'], T['pct_low'], T['pct_high']
+    def _pct_pair(arr):
+        lo = [common.percentile_linear_interpolation(arr[:i + 1], _plb, _plo) if any(
+                  x is not None for x in arr[max(0, i - _plb + 1):i + 1]) else None for i in range(n)]
+        hi = [common.percentile_linear_interpolation(arr[:i + 1], _plb, _phi) if any(
+                  x is not None for x in arr[max(0, i - _plb + 1):i + 1]) else None for i in range(n)]
+        return lo, hi
+    credit_p10, credit_p90 = _pct_pair(credit)
+    ccc_p10, ccc_p90 = _pct_pair(ccc)
+    rotten_p10, rotten_p90 = _pct_pair(rotten)
+    dfii10_p10, dfii10_p90 = _pct_pair(dfii10)
+
     def _b(i):
         """计算第 i 日的全部布尔量与派生量"""
         v = lambda arr: arr[i] if i < len(arr) else None
@@ -365,6 +382,11 @@ def compute(cal, raw):
             'rrp_peak': v(rrp_peak), 'reserve_gdp': v(r_gdp), 'reserve_assets': v(r_assets),
             'us02y_chg': v(us02y_chg), 'us10y_chg': v(us10y_chg), 'sprd_chg': v(sprd_chg),
             'yield_spread': v(sprd), 'credit_roc': v(credit_roc),
+            'ccc': v(ccc), 'rotten': v(rotten),
+            'credit_p10': v(credit_p10), 'credit_p90': v(credit_p90),
+            'ccc_p10': v(ccc_p10), 'ccc_p90': v(ccc_p90),
+            'rotten_p10': v(rotten_p10), 'rotten_p90': v(rotten_p90),
+            'dfii10_p10': v(dfii10_p10), 'dfii10_p90': v(dfii10_p90),
             'tlc': v(tlc), 'impulse': v(impulse),
             'dxy': v(dxy), 'dxy_ma': v(dxy_ma),
             'walcl_T': v(walcl_T), 'wtregen_T': v(wtregen_T), 'rrp_B': v(rrp_B),
@@ -438,6 +460,7 @@ def compute(cal, raw):
         'hist': {
             'lsi': lsi, 'gli': gli, 'rrp_T': rrp_T, 'rrp_pct': rrp_pct,
             'tlc': tlc, 'impulse': impulse, 'credit': credit, 'dfii10': dfii10,
+            'ccc': ccc, 'rotten': rotten,
             # 2 年期美债与政策利率（EFFR）的缺口，单位 bp：
             # > 0 市场在定价「未来加息」、< 0 定价「降息」。单独存一条派生序列，
             # 免得看板端还要同时拿 us02y / effr 两条再逐点对齐空值。
@@ -864,6 +887,11 @@ def main():
             'yield_spread': safe(v['yield_spread']),
             't10yie': safe(v['t10yie']), 'dfii10': safe(v['dfii10']),
             'credit': safe(v['credit']), 'credit_roc': safe(v['credit_roc']),
+            'ccc': safe(v['ccc']), 'rotten': safe(v['rotten'], 3),
+            'credit_p10': safe(v['credit_p10']), 'credit_p90': safe(v['credit_p90']),
+            'ccc_p10': safe(v['ccc_p10']), 'ccc_p90': safe(v['ccc_p90']),
+            'rotten_p10': safe(v['rotten_p10'], 3), 'rotten_p90': safe(v['rotten_p90'], 3),
+            'dfii10_p10': safe(v['dfii10_p10']), 'dfii10_p90': safe(v['dfii10_p90']),
             'cpi_yoy': safe(v['cpi_yoy']),
             'gli': safe(v['gli'], 3), 'walcl_T': safe(v['walcl_T'], 3),
             'wtregen_T': safe(v['wtregen_T'], 3), 'rrp_T': safe(v['rrp_T'], 4),
