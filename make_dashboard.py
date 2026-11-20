@@ -417,7 +417,8 @@ let ch = '';
 for (const k of D.order) {
   const s = D.tracks[k].summary;
   const c = s.net5 >= 0 ? 'var(--up)' : 'var(--down)';
-  ch += '<div class="card"><div class="k">' + s.name + ' · 持仓占比</div><div class="v" style="color:var(--orange)">' + fmt(s.hold_pct,4) + '%</div><div class="d">' + esc(s.labels.hold_card) + '</div></div>' +
+  const hr5 = (s.hold_rank5y == null) ? '5年分位 —' : '近5年分位 ' + fmt(s.hold_rank5y,1) + '%';
+  ch += '<div class="card"><div class="k">' + s.name + ' · 持仓占比</div><div class="v" style="color:var(--orange)">' + fmt(s.hold_pct,4) + '%</div><div class="d">' + hr5 + '｜' + esc(s.labels.hold_card) + '</div></div>' +
         '<div class="card"><div class="k">' + s.name + ' · 开口差 Spread</div><div class="v" style="color:var(--blue)">' + sign(s.spread,1) + '</div><div class="d">阈值 ±25｜近20日斜率 ' + sign(s.hold_slope,2) + '</div></div>' +
         '<div class="card"><div class="k">' + s.name + ' · 近5日净申赎</div><div class="v" style="color:' + c + '">' + sign(s.net5,2) + ' 亿份</div><div class="d">净变动 ' + sign(s.net5_ratio,2) + '%｜' + s.index_name + ' ' + fmt(s.idx_close,2) + '</div></div>';
 }
