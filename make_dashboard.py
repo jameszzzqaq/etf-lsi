@@ -429,8 +429,8 @@ if (D.lsi) {
       ? '近5年分位 —'
       : '近5年分位 ' + fmt(v, 1) + '%';
   const lsiCol = (gt(c.lsi,49.999)?'#8B1A1A':(gt(c.lsi,19.999)?'var(--up)':(lt(c.lsi,0)?'var(--down)':'var(--txt)')));
-  ch += '<div class="card"><div class="k">宏观 LSI 压力指数</div><div class="v" style="color:' + lsiCol + '">' + fmt(c.lsi,1) + ' bp</div><div class="d">紧张 ≥20｜极端 ≥50</div></div>' +
-        '<div class="card"><div class="k">美联储净流动性 GLI</div><div class="v" style="color:var(--blue)">' + fmt(c.gli,3) + ' T</div><div class="d">WALCL−TGA−RRP｜20日 ' + sign(c.tlc,2) + '%</div></div>' +
+  ch += '<div class="card"><div class="k">宏观 LSI 压力指数</div><div class="v" style="color:' + lsiCol + '">' + fmt(c.lsi,1) + ' bp</div><div class="d">紧张 ≥20｜极端 ≥50｜' + rankPct(c.lsi_rank5y) + '</div></div>' +
+        '<div class="card"><div class="k">美联储净流动性 GLI</div><div class="v" style="color:var(--blue)">' + fmt(c.gli,3) + ' T</div><div class="d">WALCL−TGA−RRP｜20日 ' + sign(c.tlc,2) + '%｜' + rankPct(c.gli_rank5y) + '</div></div>' +
         '<div class="card"><div class="k">RRP 缓冲垫</div><div class="v" style="color:' + (lt(c.rrp_pct,5)?'var(--up)':'var(--down)') + '">' + fmt(c.rrp_pct,1) + '%</div><div class="d">RRP ' + fmt(c.rrp_T,3) + ' T｜峰值占比</div></div>' +
         '<div class="card"><div class="k">信用利差 OAS（BB 及以下）</div><div class="v" style="color:' + (gt(c.credit,399.999)?'var(--up)':'var(--txt)') + '">' + fmt(c.credit,0) + ' bp</div><div class="d">报警 &gt;400 bp｜' + rankPct(c.credit_rank5y) + '</div></div>' +
         '<div class="card"><div class="k">CCC 级利差</div><div class="v" style="color:' + (gt(c.ccc,999.999)?'var(--up)':(lt(c.ccc,823.001)?'var(--down)':'var(--txt)')) + '">' + fmt(c.ccc/100.0,2) + '%</div><div class="d">紧缩 &gt;10%｜泛滥 &lt;8.23%｜' + rankPct(c.ccc_rank5y) + '</div></div>' +
