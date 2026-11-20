@@ -824,6 +824,7 @@ if (D.lsi) {
   const lsiCol = (gt(c.lsi,49.999)?'#8B1A1A':(gt(c.lsi,19.999)?'var(--up)':(lt(c.lsi,0)?'var(--down)':'var(--txt)')));
   let lh='';
   const kv = (k,v,d,col)=>'<div class="card"><div class="k">'+k+'</div><div class="v" style="color:'+(col||'var(--txt)')+'">'+v+'</div><div class="d">'+d+'</div></div>';
+  const rankPct = (v) => (v == null || v === undefined) ? '近5年分位 —' : '近5年分位 ' + fmt(v, 1) + '%';
   lh += kv('LSI 压力指数', fmt(c.lsi,1)+' bp', 'SOFR−RRP + EFFR−IORB', lsiCol);
   lh += kv('SOFR / RRP 利率', fmt(d100(c.sofr),2)+' / '+fmt(d100(c.rrp_rate),2)+'%', '美元隔夜融资基准');
   lh += kv('EFFR / IORB', fmt(d100(c.effr),2)+' / '+fmt(d100(c.iorb),2)+'%', '有效联邦基金利率 / 准备金利率');
@@ -832,7 +833,7 @@ if (D.lsi) {
   lh += kv('GLI 20日变化', sign(c.tlc,2)+'%', '骤减阈值 < −1.00%', lt(c.tlc,-1)? 'var(--up)' : 'var(--down)');
   lh += kv('流动性冲量', sign(c.impulse,2)+'%', '连续3日回落即报警', gt(c.impulse,0)?'var(--down)':'var(--up)');
   lh += kv('RRP 余额 / 峰值占比', fmt(c.rrp_T,3)+' T / '+fmt(c.rrp_pct,1)+'%', '枯竭阈值 <5% 或 <0.1T', c.rrp_pct<5?'var(--up)':'var(--down)');
-  lh += kv('银行准备金', fmt(c.wrb_T,3)+' T', '占GDP '+fmt(c.reserve_gdp,2)+'%｜占银行总资产 '+fmt(c.reserve_assets,2)+'%',
+  lh += kv('银行准备金', fmt(c.wrb_T,3)+' T', '占GDP '+fmt(c.reserve_gdp,2)+'%｜占银行总资产 '+fmt(c.reserve_assets,2)+'%｜'+rankPct(c.wrb_T_rank5y),
            (c.reserve_gdp<11 && c.reserve_assets<11)?'var(--up)':'var(--down)');
   lh += kv('10Y 实际利率 DFII10', fmt(d100(c.dfii10),2)+'%', '紧缩 >2.20%｜极宽 <0.00%',
            gt(c.dfii10,220)?'var(--up)':(lt(c.dfii10,0)?'var(--down)':'var(--txt)'));

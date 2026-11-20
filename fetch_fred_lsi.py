@@ -380,6 +380,7 @@ def compute(cal, raw):
     dfii10_rank5y = _rank5y(dfii10)
     lsi_rank5y = _rank5y(lsi)
     gli_rank5y = _rank5y(gli)
+    wrb_T_rank5y = _rank5y(wrb_T)
 
     def _b(i):
         """计算第 i 日的全部布尔量与派生量"""
@@ -406,6 +407,7 @@ def compute(cal, raw):
             'credit_rank5y': credit_rank5y, 'ccc_rank5y': ccc_rank5y,
             'rotten_rank5y': rotten_rank5y, 'dfii10_rank5y': dfii10_rank5y,
             'lsi_rank5y': lsi_rank5y, 'gli_rank5y': gli_rank5y,
+            'wrb_T_rank5y': wrb_T_rank5y,
             'tlc': v(tlc), 'impulse': v(impulse),
             'dxy': v(dxy), 'dxy_ma': v(dxy_ma),
             'walcl_T': v(walcl_T), 'wtregen_T': v(wtregen_T), 'rrp_B': v(rrp_B),
@@ -914,6 +916,7 @@ def main():
             'credit_rank5y': safe(v['credit_rank5y'], 1), 'ccc_rank5y': safe(v['ccc_rank5y'], 1),
             'rotten_rank5y': safe(v['rotten_rank5y'], 1), 'dfii10_rank5y': safe(v['dfii10_rank5y'], 1),
             'lsi_rank5y': safe(v['lsi_rank5y'], 1), 'gli_rank5y': safe(v['gli_rank5y'], 1),
+            'wrb_T_rank5y': safe(v['wrb_T_rank5y'], 1),
             'cpi_yoy': safe(v['cpi_yoy']),
             'gli': safe(v['gli'], 3), 'walcl_T': safe(v['walcl_T'], 3),
             'wtregen_T': safe(v['wtregen_T'], 3), 'rrp_T': safe(v['rrp_T'], 4),
