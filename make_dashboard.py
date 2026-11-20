@@ -435,7 +435,8 @@ if (D.lsi) {
         '<div class="card"><div class="k">信用利差 OAS（BB 及以下）</div><div class="v" style="color:' + (gt(c.credit,399.999)?'var(--up)':'var(--txt)') + '">' + fmt(c.credit,0) + ' bp</div><div class="d">报警 &gt;400 bp｜' + rankPct(c.credit_rank5y) + '</div></div>' +
         '<div class="card"><div class="k">CCC 级利差</div><div class="v" style="color:' + (gt(c.ccc,999.999)?'var(--up)':(lt(c.ccc,823.001)?'var(--down)':'var(--txt)')) + '">' + fmt(c.ccc/100.0,2) + '%</div><div class="d">紧缩 &gt;10%｜泛滥 &lt;8.23%｜' + rankPct(c.ccc_rank5y) + '</div></div>' +
         '<div class="card"><div class="k">CCC 相对溢价倍数</div><div class="v" style="color:' + (gt(c.rotten,2.999)?'var(--up)':(lt(c.rotten,2.001)?'var(--down)':'var(--txt)')) + '">' + fmt(c.rotten,2) + '</div><div class="d">CCC OAS ÷ HY OAS｜&gt;3 红 &lt;2 绿｜' + rankPct(c.rotten_rank5y) + '</div></div>' +
-        '<div class="card"><div class="k">10Y 实际利率 DFII10</div><div class="v" style="color:' + (gt(c.dfii10,219.999)?'var(--up)':(lt(c.dfii10,0)?'var(--down)':'var(--txt)')) + '">' + fmt(c.dfii10/100.0,2) + '%</div><div class="d">紧缩 &gt;2.20%｜极宽 &lt;0.00%｜' + rankPct(c.dfii10_rank5y) + '</div></div>';
+        '<div class="card"><div class="k">10Y 实际利率 DFII10</div><div class="v" style="color:' + (gt(c.dfii10,219.999)?'var(--up)':(lt(c.dfii10,0)?'var(--down)':'var(--txt)')) + '">' + fmt(c.dfii10/100.0,2) + '%</div><div class="d">紧缩 &gt;2.20%｜极宽 &lt;0.00%｜' + rankPct(c.dfii10_rank5y) + '</div></div>' +
+        '<div class="card"><div class="k">银行准备金</div><div class="v" style="color:' + ((c.reserve_gdp<11 && c.reserve_assets<11)?'var(--up)':'var(--down)') + '">' + fmt(c.wrb_T,3) + ' T</div><div class="d">占GDP ' + fmt(c.reserve_gdp,2) + '%｜占银行总资产 ' + fmt(c.reserve_assets,2) + '%｜' + rankPct(c.wrb_T_rank5y) + '</div></div>';
 }
 $('topCards').innerHTML = ch;
 
