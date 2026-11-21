@@ -45,10 +45,11 @@ CORE_CN = {
     'rotten_p10': '相对溢价倍数 3年 p10', 'rotten_p90': '相对溢价倍数 3年 p90',
     'dfii10_p10': '实际利率 3年 p10 (bp)', 'dfii10_p90': '实际利率 3年 p90 (bp)',
     # v4 新增：4 张宏观卡的「近5年分位」小字读数（当前值在 1250 交易日中的 percentile rank）
-    'credit_rank5y': '信用利差近5年分位 (%)', 'ccc_rank5y': 'CCC利差近5年分位 (%)',
-    'rotten_rank5y': 'CCC相对溢价倍数近5年分位 (%)', 'dfii10_rank5y': '实际利率近5年分位 (%)',
+    'credit_rank5y': '信用利差近5年分位 (%)', 'ccc_rank5y': 'CCC利差可用历史分位 (%)',
+    'rotten_rank5y': 'CCC相对溢价倍数可用历史分位 (%)', 'dfii10_rank5y': '实际利率近5年分位 (%)',
     'lsi_rank5y': 'LSI压力指数近5年分位 (%)', 'gli_rank5y': '净流动性GLI近5年分位 (%)',
     'wrb_T_rank5y': '银行准备金近5年分位 (%)',
+    # BAMLH0A3HYC 仅 2023-11-21 起约 3 年，CCC / rotten 用「可用历史分位」而非「近5年」。
     'cpi_yoy': '美国 CPI 同比', 'gli': '全球流动性 GLI',
     'walcl_T': '美联储总资产 WALCL', 'wtregen_T': 'TGA 财政部一般账户',
     'rrp_T': 'RRP 逆回购余额', 'rrp_pct': 'RRP 占峰值比例',
@@ -401,13 +402,18 @@ def build(d):
             A('### ① 估值')
             A('')
             A('> `pe_pct` 是历史分位（0~1，越小越便宜）；'
-              '`pe_over_history` 是其互补值，仅透传备查，**不要混用**。')
+              '`pe_over_history` 是其互补值，仅透传备查，**不要混用**。'
+              '「分位区间」= 蛋卷 `begin_at` ~ `ts`，即该指数分位样本的真实起止日，'
+              '不同指数起点不同（约 6~10 年），不是固定 10 年。')
             A('')
-            A('| 指数 | 日期 | PE(TTM) | PB | PE 分位 | PB 分位 | ROE | 股息率 | PEG | 评级 |')
-            A('| :--- | :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | :--- |')
+            A('| 指数 | 日期 | 分位区间 | PE(TTM) | PB | PE 分位 | PB 分位 | ROE | 股息率 | PEG | 评级 |')
+            A('| :--- | :--- | :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | :--- |')
             for v in val['data']:
-                A('| %s | %s | %s | %s | %s | %s | %s | %s | %s | %s |' % (
-                    s(v.get('name')), s(v.get('date')), num(v.get('pe')), num(v.get('pb'), 4),
+                span = ('%s ~ %s' % (s(v.get('valuation_from')), s(v.get('date')))
+                        if v.get('valuation_from') else s(v.get('date')))
+                A('| %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s |' % (
+                    s(v.get('name')), s(v.get('date')), span,
+                    num(v.get('pe')), num(v.get('pb'), 4),
                     num(v.get('pe_pct'), 4), num(v.get('pb_pct'), 4),
                     pctv((v.get('roe') or 0) * 100), pctv((v.get('dividend_yield') or 0) * 100),
                     num(v.get('peg'), 4), s(v.get('level'))))

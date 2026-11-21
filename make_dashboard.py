@@ -428,13 +428,17 @@ if (D.lsi) {
   const rankPct = (v) => (v == null || v === undefined)
       ? '近5年分位 —'
       : '近5年分位 ' + fmt(v, 1) + '%';
+  // BAMLH0A3HYC 官方序列仅 2023-11-21 起（约 3 年），不能称「近5年」；数值仍是同一 percentile rank。
+  const availPct = (v) => (v == null || v === undefined)
+      ? '可用历史分位 —'
+      : '可用历史分位 ' + fmt(v, 1) + '%';
   const lsiCol = (gt(c.lsi,49.999)?'#8B1A1A':(gt(c.lsi,19.999)?'var(--up)':(lt(c.lsi,0)?'var(--down)':'var(--txt)')));
   ch += '<div class="card"><div class="k">宏观 LSI 压力指数</div><div class="v" style="color:' + lsiCol + '">' + fmt(c.lsi,1) + ' bp</div><div class="d">紧张 ≥20｜极端 ≥50｜' + rankPct(c.lsi_rank5y) + '</div></div>' +
         '<div class="card"><div class="k">美联储净流动性 GLI</div><div class="v" style="color:var(--blue)">' + fmt(c.gli,3) + ' T</div><div class="d">WALCL−TGA−RRP｜20日 ' + sign(c.tlc,2) + '%｜' + rankPct(c.gli_rank5y) + '</div></div>' +
         '<div class="card"><div class="k">RRP 缓冲垫</div><div class="v" style="color:' + (lt(c.rrp_pct,5)?'var(--up)':'var(--down)') + '">' + fmt(c.rrp_pct,1) + '%</div><div class="d">RRP ' + fmt(c.rrp_T,3) + ' T｜峰值占比</div></div>' +
         '<div class="card"><div class="k">信用利差 OAS（BB 及以下）</div><div class="v" style="color:' + (gt(c.credit,399.999)?'var(--up)':'var(--txt)') + '">' + fmt(c.credit,0) + ' bp</div><div class="d">报警 &gt;400 bp｜' + rankPct(c.credit_rank5y) + '</div></div>' +
-        '<div class="card"><div class="k">CCC 级利差</div><div class="v" style="color:' + (gt(c.ccc,999.999)?'var(--up)':(lt(c.ccc,823.001)?'var(--down)':'var(--txt)')) + '">' + fmt(c.ccc/100.0,2) + '%</div><div class="d">紧缩 &gt;10%｜泛滥 &lt;8.23%｜&gt;18% 流动性危机(抄底)｜' + rankPct(c.ccc_rank5y) + '</div></div>' +
-        '<div class="card"><div class="k">CCC 相对溢价倍数</div><div class="v" style="color:' + (gt(c.rotten,2.999)?'var(--up)':(lt(c.rotten,2.001)?'var(--down)':'var(--txt)')) + '">' + fmt(c.rotten,2) + '</div><div class="d">CCC OAS ÷ HY OAS｜&gt;3 红 &lt;2 绿｜' + rankPct(c.rotten_rank5y) + '</div></div>' +
+        '<div class="card"><div class="k">CCC 级利差</div><div class="v" style="color:' + (gt(c.ccc,999.999)?'var(--up)':(lt(c.ccc,823.001)?'var(--down)':'var(--txt)')) + '">' + fmt(c.ccc/100.0,2) + '%</div><div class="d">紧缩 &gt;10%｜泛滥 &lt;8.23%｜&gt;18% 流动性危机(抄底)｜' + availPct(c.ccc_rank5y) + '</div></div>' +
+        '<div class="card"><div class="k">CCC 相对溢价倍数</div><div class="v" style="color:' + (gt(c.rotten,2.999)?'var(--up)':(lt(c.rotten,2.001)?'var(--down)':'var(--txt)')) + '">' + fmt(c.rotten,2) + '</div><div class="d">CCC OAS ÷ HY OAS｜&gt;3 红 &lt;2 绿｜' + availPct(c.rotten_rank5y) + '</div></div>' +
         '<div class="card"><div class="k">10Y 实际利率 DFII10</div><div class="v" style="color:' + (gt(c.dfii10,219.999)?'var(--up)':(lt(c.dfii10,0)?'var(--down)':'var(--txt)')) + '">' + fmt(c.dfii10/100.0,2) + '%</div><div class="d">紧缩 &gt;2.20%｜极宽 &lt;0.00%｜' + rankPct(c.dfii10_rank5y) + '</div></div>' +
         '<div class="card"><div class="k">银行准备金</div><div class="v" style="color:' + ((c.reserve_gdp<11 && c.reserve_assets<11)?'var(--up)':'var(--down)') + '">' + fmt(c.wrb_T,3) + ' T</div><div class="d">占GDP ' + fmt(c.reserve_gdp,2) + '%｜占银行总资产 ' + fmt(c.reserve_assets,2) + '%｜' + rankPct(c.wrb_T_rank5y) + '</div></div>';
 }
@@ -1447,6 +1451,7 @@ $('shareBlocks').innerHTML = sh;
   $('valHint').innerHTML = 'PE/PB 的历史分位（0%＝历史最便宜，100%＝最贵），分位越高越贵。'
     + '刻度条的白线就是当前分位。<b>口径注意</b>：pe_pct 即上游 <code>pe_percentile</code>，'
     + '而 <code>pe_over_history</code> 是它的互补值（1 − pe_pct），两者互为倒数关系，本页只用前者。'
+    + '每张卡显示分位样本的真实起止区间；不同指数起点不同（约 6~10 年），并非固定 10 年。'
     + '　数据源：蛋卷基金（替代被 401 拦下的 legulegu）。';
 
   const pctCol = p => (p === null || p === undefined) ? 'var(--sub)'
@@ -1464,6 +1469,7 @@ $('shareBlocks').innerHTML = sh;
       + '（' + pctTxt(pp) + '）</b></div>'
       + '<div class="mrow"><span>PB（分位）</span><b style="color:' + pctCol(pb) + '">' + fmt(r.pb, 3)
       + '（' + pctTxt(pb) + '）</b></div>'
+      + '<div class="mrow"><span>分位区间</span><b>' + esc(r.valuation_from ? (r.valuation_from + ' ~ ' + (r.date || '')) : (r.date || '—')) + '</b></div>'
       + '<div class="mrow"><span>ROE / 股息率</span><b>'
       + (r.roe === null || r.roe === undefined ? '—' : (r.roe * 100).toFixed(2) + '%') + ' / '
       + (r.dividend_yield === null || r.dividend_yield === undefined ? '—' : (r.dividend_yield * 100).toFixed(2) + '%') + '</b></div>'
