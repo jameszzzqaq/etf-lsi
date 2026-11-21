@@ -275,7 +275,9 @@ def build(d):
           'GLI / 美联储资产 / 准备金类为**万亿美元**；'
           '`rrp_pct`、`reserve_gdp`、`reserve_assets`、`credit_roc`、`tlc`、`impulse` 为百分数；'
           '`credit_rank5y` / `ccc_rank5y` / `rotten_rank5y` / `dfii10_rank5y` / `lsi_rank5y` / `gli_rank5y` '
-          '是近5年分位（0~100 百分数，不是 bps）：看板顶部 6 张宏观卡与 LSI 详情区「银行准备金」的「近5年分位 XX.X%」用的就是这些值，判色仍按固定阈值；'
+          '是 percentile rank（0~100 百分数，不是 bps）：信用利差 / DFII10 / LSI / GLI / 准备金为近5年样本，'
+          'CCC 与相对溢价倍数因 BAMLH0A3HYC 仅 2023-11-21 起改称「可用历史分位」；'
+          '看板小字用的就是这些值，判色仍按固定阈值；'
           '`dxy` / `dxy_ma` 为指数点位。')
         A('')
         L.extend(kv_table([('%s `%s`' % (CORE_CN.get(k, k), k), num(v, 4) if isinstance(v, float) else s(v))
