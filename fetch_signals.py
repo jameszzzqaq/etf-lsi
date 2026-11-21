@@ -75,7 +75,9 @@ def warn(msg):
 
 # ── 1. 指数估值 ────────────────────────────────────────────────
 def get_valuation(out):
-    j = _get('/api/index-valuation', {'codes': 'SH000300,SZ399006'})
+    # 8 只指数（蛋卷 index_eva 已逐一验证代码存在且 PE/PB 双分位完整）
+    codes = 'SH000300,SZ399006,SH000688,HKHSTECH,SH000922,CSIH30269,NDX,SP500'
+    j = _get('/api/index-valuation', {'codes': codes})
     rows = j.get('data') or []
     if not rows:
         raise RuntimeError('估值返回空表')

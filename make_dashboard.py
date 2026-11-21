@@ -214,7 +214,7 @@ border-radius:10px;padding:12px 15px;margin-bottom:16px;font-size:13px}
 .barwrap .mk{position:absolute;top:-3px;bottom:-3px;width:3px;background:#fff;border-radius:2px}
 .rbox .kv{display:flex;justify-content:space-between;font-size:11.8px;color:var(--sub)}
 
-/* ── ⑨~⑫ 市场环境面板 ─────────────────────────────── */
+/* ── ⑩~⑬ 市场环境面板 ─────────────────────────────── */
 .mgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
 .mbox{background:var(--panel2);border:1px solid var(--grid);border-radius:11px;padding:13px 15px}
 .mbox .t{font-size:13px;font-weight:600;margin-bottom:3px;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
@@ -288,8 +288,14 @@ border-radius:10px;padding:12px 15px;margin-bottom:10px;font-size:12.8px;line-he
   <div class="rgrid" id="ratioCards"></div>
 </div>
 
+<div class="panel" id="valPanel" style="display:none">
+  <h2>⑤ 指数估值分位（PE / PB · 数据源：蛋卷基金）</h2>
+  <div class="hint" id="valHint"></div>
+  <div id="valBox"></div>
+</div>
+
 <div class="panel" id="lsiPanel" style="display:none">
-  <h2>⑤ 宏观 LSI 核心面板（美联储流动性压力指数）</h2>
+  <h2>⑥ 宏观 LSI 核心面板（美联储流动性压力指数）</h2>
   <div class="hint" id="lsiHint"></div>
   <h2 style="margin-top:8px">⑤-1 美元宏观流动性压力指数 LSI vs 美联储净流动性 GLI（悬停查看每日数值 · 可缩放查看近 5 年）</h2>
   <div class="legend"><span><i style="background:var(--orange)"></i>LSI 压力指数（左轴，bps）</span>
@@ -307,7 +313,7 @@ border-radius:10px;padding:12px 15px;margin-bottom:10px;font-size:12.8px;line-he
 </div>
 
 <div class="panel" id="alertPanel" style="display:none">
-  <h2>⑥ 20 项背景颜色报警 · 全量明细表</h2>
+  <h2>⑦ 20 项背景颜色报警 · 全量明细表</h2>
   <div class="hint">下表列出每一项报警的<b>原始数据 → 计算公式 → 当前结果 → 代码阈值 → 是否报警</b>。
   <b class="alert-on">红色加粗</b> = 当前已触发报警；<b class="alert-off">绿色</b> = 当前正常未触发。所有阈值严格照搬 TradingView Pine Script 原代码。</div>
   <div style="overflow-x:auto"><table id="alertTbl"></table></div>
@@ -315,17 +321,17 @@ border-radius:10px;padding:12px 15px;margin-bottom:10px;font-size:12.8px;line-he
 </div>
 
 <div class="panel" id="loosePanel" style="display:none">
-  <h2>⑦ 正面宽松状态指示</h2>
+  <h2>⑧ 正面宽松状态指示</h2>
   <div style="overflow-x:auto"><table id="looseTbl"></table></div>
 </div>
 
 <div class="panel" id="diagPanel" style="display:none">
-  <h2>⑧ 四维全景合成诊断（资金动态 → 一阶宏观周期 → 二阶流动性水位 → 三阶微观定价）</h2>
+  <h2>⑨ 四维全景合成诊断（资金动态 → 一阶宏观周期 → 二阶流动性水位 → 三阶微观定价）</h2>
   <div id="diagBox"></div>
 </div>
 
 <div class="panel" id="liqCnPanel" style="display:none">
-  <h2>⑨ 境内资金面（DR001 / 20 日中枢）· 与 ⑤ 的境外流动性互为对照 <span id="liqCnBadge" style="display:none;margin-left:10px;padding:2px 9px;border-radius:9px;font-size:11.5px;border:1px solid;font-weight:400"></span></h2>
+  <h2>⑩ 境内资金面（DR001 / 20 日中枢）· 与 ⑥ 的境外流动性互为对照 <span id="liqCnBadge" style="display:none;margin-left:10px;padding:2px 9px;border-radius:9px;font-size:11.5px;border:1px solid;font-weight:400"></span></h2>
   <div class="hint" id="liqCnHint"></div>
   <div class="legend" id="liqCnLegend"></div>
   <div class="zbar" id="liqCnBar">
@@ -345,17 +351,11 @@ border-radius:10px;padding:12px 15px;margin-bottom:10px;font-size:12.8px;line-he
 </div>
 
 <div class="panel" id="breadthPanel" style="display:none">
-  <h2>⑩ 市场宽度（涨跌家数 / 涨停跌停 / 连板高度）</h2>
+  <h2>⑪ 市场宽度（涨跌家数 / 涨停跌停 / 连板高度）</h2>
   <div class="hint" id="breadthHint"></div>
   <div class="cards" id="breadthCards"></div>
   <div id="breadthBar"></div>
   <svg id="breadthChart" viewBox="0 0 1000 220"></svg>
-</div>
-
-<div class="panel" id="valPanel" style="display:none">
-  <h2>⑪ 指数估值分位（PE / PB · 数据源：蛋卷基金）</h2>
-  <div class="hint" id="valHint"></div>
-  <div id="valBox"></div>
 </div>
 
 <div class="panel" id="premPanel" style="display:none">
@@ -1015,7 +1015,7 @@ for (const k of D.order) {
 }
 $('shareBlocks').innerHTML = sh;
 
-/* ══════════ ⑨ 境内资金面 ══════════ */
+/* ══════════ ⑩ 境内资金面 ══════════ */
 (function renderCnLiquidity(){
   const S = D.signals;
   if (!S || !S.liquidity) return;
@@ -1367,7 +1367,7 @@ $('shareBlocks').innerHTML = sh;
   render();
 })();
 
-/* ══════════ ⑩ 市场宽度 ══════════ */
+/* ══════════ ⑪ 市场宽度 ══════════ */
 (function renderBreadth(){
   const S = D.signals;
   if (!S || !S.breadth) return;
@@ -1436,7 +1436,7 @@ $('shareBlocks').innerHTML = sh;
   $('breadthChart').innerHTML = g;
 })();
 
-/* ══════════ ⑪ 指数估值分位 ══════════ */
+/* ══════════ ⑤ 指数估值分位 ══════════ */
 (function renderValuation(){
   const S = D.signals;
   if (!S || !S.valuation) return;
