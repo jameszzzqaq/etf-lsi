@@ -1832,6 +1832,32 @@ GLI 越高＝净流动性越宽松；与信用利差等「越高越坏」的指�
 
 **回滚**：`git revert 88479831`。
 
+### K. 2026-11-22：估值板扩容至 8 只指数 + 移到四大风格之后（⑤）
+
+用户要求把「指数估值分位」板从 2 只扩到 8 只，并从 ⑪ 移到 ④ 之后（编号变 ⑤），其余标号依次后推。
+
+**数据源验证（真实蛋卷接口）**：`https://danjuanfunds.com/djapi/index_eva/dj` 全量 63 只，用户给的 6 个新代码全部精确命中且 PE/PB 双分位完整；`/djapi/index_eva/detail/{code}` 逐个实测同样正常。
+
+| 文件 | 改动 |
+| :--- | :--- |
+| `fetch_signals.py` | `/api/index-valuation` 的 `codes` 从 2 只扩到 8 只：`SH000300,SZ399006,SH000688,HKHSTECH,SH000922,CSIH30269,NDX,SP500`。鉴权链路 `X-API-Key` / `A_STOCK_API_KEY` **未动** |
+| `make_dashboard.py` | `valPanel` DOM 从 ⑩ 后移到 ④（ratioPanel）之后；编号重排为连续的 ④~⑬（估值⑤、原⑤~⑩→⑥~⑪、折溢价/国债复位⑫/⑬）；⑩资金面文案「与⑤对照」→「与⑥对照」 |
+| `make_llm_summary.py` | **未改**——估值段数据驱动（`for v in val['data']`），8 只自动进入 `llms.txt` 表格；其「① 估值」是六件套内部编号，不是看板 ①~⑬ 体系 |
+
+**跨仓库依赖（重要）**：Worker 仓库 `wj624/a-stock-api` 的 `djIndexCode()` 原本只认 `^(SH|SZ|BJ)\d{6}$`，
+`HKHSTECH`/`CSIH30269`/`NDX`/`SP500` 被 `.filter(Boolean)` **静默丢弃**（无报错，正是「静默降级」陷阱）。
+已在该 Worker 加精确白名单 `DJ_EXTRA`（commit `5a343398a32`，deploy run `44923107444` success + smoke test PASS），放行这 4 个代码，不放宽正则、不影响其他端点。
+
+| 项目 | 结果 |
+| :--- | :--- |
+| etf-lsi commit | `a2667b82cc51`（2 文件）；期间 main 有定时数据提交，最终 run head `6d6809d68cf5` |
+| workflow run | 首次 `44922302761`（只 4 只，暴露 Worker 过滤）→ Worker 修复后重跑 `44923207737` success |
+| 线上校验 | gh-pages `data.json` 估值 **8 只齐全、0 缺失 0 多余、无 upstream_error**；index.html 编号连续 ④~⑬、DOM 顺序 ratio<val<lsi、node --check 通过 |
+| 8 只读数（asof 2026-11-20） | 沪深300 PE13.53/分位68.0% · 创业板 25.08/2.0% · 科创50 90.55/74.1% · 恒生科技 16.71/1.7% · 中证红利 9.49/90.5% · 红利低波 9.54/80.9% · 纳指100 25.46/15.3% · 标普500 22.37/21.8% |
+
+**回滚**：etf-lsi `git revert a2667b82cc51`；Worker `git revert 5a343398a32`（会自动重新部署，约 1~2 分钟生效）。
+**保密**：密钥始终从 GitHub Secrets `A_STOCK_API_KEY` 读、经 `X-API-Key` 头传递，未写进任何代码/仓库文件。
+
 ---
 
 ## ☕ 支持一下（打赏）
