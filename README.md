@@ -1858,6 +1858,33 @@ GLI 越高＝净流动性越宽松；与信用利差等「越高越坏」的指�
 **回滚**：etf-lsi `git revert a2667b82cc51`；Worker `git revert 5a343398a32`（会自动重新部署，约 1~2 分钟生效）。
 **保密**：密钥始终从 GitHub Secrets `A_STOCK_API_KEY` 读、经 `X-API-Key` 头传递，未写进任何代码/仓库文件。
 
+### L. 2026-11-22：估值卡恢复「分位区间」+ CCC 文案改「可用历史分位」
+
+用户记得估值板以前带「百分位的时间区间」。逐 commit 核查结论：**不是最近扩容改掉的**——估值面板从首次引入 `c79d0aac`（2026-11-04）到 `a2667b82`，`valHint` 与卡片渲染代码一字未变；Worker 15 个历史 commit 也从未映射过 `begin_at`。蛋卷 `/djapi/index_eva/detail/{code}` 一直返回 `begin_at`，只是 Worker 原来只取了 `d.ts`，下游拿不到区间。
+
+**实测 8 只指数的真实分位起点**（终点均为数据日 2026-11-20）：
+
+| 指数 | 起点 | 跨度 |
+| :--- | :--- | ---: |
+| 沪深300 / 创业板 / 中证红利 / 红利低波 / 标普500 | 2016-08-05 | 10.3 年 |
+| 纳指100 | 2016-08-04 | 10.3 年 |
+| 科创50 | 2019-12-31 | 6.9 年 |
+| 恒生科技 | 2020-07-27 | 6.3 年 |
+
+所以「固定 10 年分位」对科创50、恒生科技并不成立，显示真实区间反而更严谨。
+
+| 项目 | 内容 |
+| :--- | :--- |
+| Worker | `a282201165c7`：`fetchIndexValuation()` 增加 `valuation_from: d.begin_at ? bjDate(d.begin_at) : ""`，与 `date`（`d.ts`）构成区间；原有代码白名单、鉴权链路、其他字段均不变。deploy run `44930260294` success，Deploy + Smoke test 均 PASS |
+| etf-lsi | `de7b8145909c`（`make_dashboard.py` + `make_llm_summary.py`）：估值卡新增「分位区间 `valuation_from ~ date`」一行，`valHint` 说明「不同指数起点不同（约 6~10 年），并非固定 10 年」；`llms.txt` 估值表新增「分位区间」列 |
+| 口径修正 | `34f01b0fe580`：`make_llm_summary.py` 原句把 6 张宏观卡统称「近5年分位」，改为逐项区分——信用利差 / DFII10 / LSI / GLI / 准备金为近5年样本，CCC 与相对溢价倍数为「可用历史分位」 |
+| CCC 文案 | `CCC 级利差`、`CCC 相对溢价倍数` 两卡小字由「近5年分位」改为「可用历史分位」；原因是 `BAMLH0A3HYC` 官方序列仅从 2023-11-21 开始（约 3 年）。固定阈值判色（&gt;10% 红 / &lt;8.23% 绿、&gt;3 红 / &lt;2 绿）与 18% 文字阈值均不变 |
+| workflow run | 首轮 `44930470765` success（验证新字段与区间渲染）；口径修正后重跑 `44931032756` success（head `13c7cff42664`） |
+| 线上校验 | 按硬约束用 contents API `?ref=gh-pages` 取真值：`data.json` 估值 8 只全部带 `valuation_from`、无 `upstream_error`；`index.html` 提取 script `node --check` 通过；「分位区间」1、「可用历史分位」2、「近5年分位」5；`llms.txt` 含区间列且旧口径句 0 残留 |
+
+**回滚**：etf-lsi `git revert 34f01b0fe580` + `git revert de7b8145909c`；Worker `git revert a282201165c7`（push 后自动重新部署）。
+**保密**：密钥链路未动，`A_STOCK_API_KEY` 仍只从 GitHub Secrets 读、经 `X-API-Key` 头传递，未写进代码或仓库文件。
+
 ---
 
 ## ☕ 支持一下（打赏）
