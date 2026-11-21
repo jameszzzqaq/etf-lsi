@@ -192,7 +192,6 @@ LSI_TH = {
     'pct_low': 10,                      # 分位下沿 p10
     'pct_high': 90,                     # 分位上沿 p90
     'rank_lookback': 1250,              # 近5年分位窗口（交易日）
-    'ccc_dfii_crisis': 18.5,           # CCC利差−实际利率 危机抄底线 (%)，> 此值为金融危机抄底信号
     'reserve_gdp_threshold': 0.11,      # 准备金/GDP 不足阈值
     'reserve_assets_threshold': 0.11,   # 准备金/银行总资产 不足阈值
     'ma_period': 10,                    # 美联储黄金到顶 MA 周期

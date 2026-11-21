@@ -49,7 +49,6 @@ CORE_CN = {
     'rotten_rank5y': 'CCC相对溢价倍数近5年分位 (%)', 'dfii10_rank5y': '实际利率近5年分位 (%)',
     'lsi_rank5y': 'LSI压力指数近5年分位 (%)', 'gli_rank5y': '净流动性GLI近5年分位 (%)',
     'wrb_T_rank5y': '银行准备金近5年分位 (%)',
-    'ccc_dfii': 'CCC利差−实际利率 (bps)', 'ccc_dfii_rank5y': 'CCC利差−实际利率近5年分位 (%)',
     'cpi_yoy': '美国 CPI 同比', 'gli': '全球流动性 GLI',
     'walcl_T': '美联储总资产 WALCL', 'wtregen_T': 'TGA 财政部一般账户',
     'rrp_T': 'RRP 逆回购余额', 'rrp_pct': 'RRP 占峰值比例',
@@ -275,8 +274,7 @@ def build(d):
           'GLI / 美联储资产 / 准备金类为**万亿美元**；'
           '`rrp_pct`、`reserve_gdp`、`reserve_assets`、`credit_roc`、`tlc`、`impulse` 为百分数；'
           '`credit_rank5y` / `ccc_rank5y` / `rotten_rank5y` / `dfii10_rank5y` / `lsi_rank5y` / `gli_rank5y` '
-          '是近5年分位（0~100 百分数，不是 bps）：看板顶部宏观卡与 LSI 详情区「银行准备金」的「近5年分位 XX.X%」用的就是这些值，判色仍按固定阈值；'
-          '`ccc_dfii` = CCC 级利差 − 10Y 实际利率（bps，展示时 ÷100 为 %），>18.5% 是金融危机抄底信号；'
+          '是近5年分位（0~100 百分数，不是 bps）：看板顶部 6 张宏观卡与 LSI 详情区「银行准备金」的「近5年分位 XX.X%」用的就是这些值，判色仍按固定阈值；'
           '`dxy` / `dxy_ma` 为指数点位。')
         A('')
         L.extend(kv_table([('%s `%s`' % (CORE_CN.get(k, k), k), num(v, 4) if isinstance(v, float) else s(v))
