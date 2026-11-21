@@ -227,6 +227,10 @@ def compute(cal, raw):
     ccc = to_bps(ffill(cal, raw.get('BAMLH0A3HYC', {})))
     rotten = [None if (a is None or b is None or not b) else a / b
               for a, b in zip(ccc, credit)]
+    # v5：CCC 级利差 − 10Y 实际利率（均 bps）。两者都 fmt/100 显示为 %。
+    # 差值越大＝信用端压力相对无风险实际利率越极端；>18.5% 视为金融危机抄底信号。
+    ccc_dfii = [None if (a is None or b is None) else a - b
+                for a, b in zip(ccc, dfii10)]
     cpi = cpi_yoy_bps(cal, raw.get('CPIAUCSL', {}))
 
     walcl_T = to_T_millions(ffill(cal, raw.get('WALCL', {})))        # 美联储总资产 T
@@ -381,6 +385,7 @@ def compute(cal, raw):
     lsi_rank5y = _rank5y(lsi)
     gli_rank5y = _rank5y(gli)
     wrb_T_rank5y = _rank5y(wrb_T)
+    ccc_dfii_rank5y = _rank5y(ccc_dfii)
 
     def _b(i):
         """计算第 i 日的全部布尔量与派生量"""
@@ -408,6 +413,7 @@ def compute(cal, raw):
             'rotten_rank5y': rotten_rank5y, 'dfii10_rank5y': dfii10_rank5y,
             'lsi_rank5y': lsi_rank5y, 'gli_rank5y': gli_rank5y,
             'wrb_T_rank5y': wrb_T_rank5y,
+            'ccc_dfii': v(ccc_dfii), 'ccc_dfii_rank5y': ccc_dfii_rank5y,
             'tlc': v(tlc), 'impulse': v(impulse),
             'dxy': v(dxy), 'dxy_ma': v(dxy_ma),
             'walcl_T': v(walcl_T), 'wtregen_T': v(wtregen_T), 'rrp_B': v(rrp_B),
@@ -917,6 +923,7 @@ def main():
             'rotten_rank5y': safe(v['rotten_rank5y'], 1), 'dfii10_rank5y': safe(v['dfii10_rank5y'], 1),
             'lsi_rank5y': safe(v['lsi_rank5y'], 1), 'gli_rank5y': safe(v['gli_rank5y'], 1),
             'wrb_T_rank5y': safe(v['wrb_T_rank5y'], 1),
+            'ccc_dfii': safe(v['ccc_dfii']), 'ccc_dfii_rank5y': safe(v['ccc_dfii_rank5y'], 1),
             'cpi_yoy': safe(v['cpi_yoy']),
             'gli': safe(v['gli'], 3), 'walcl_T': safe(v['walcl_T'], 3),
             'wtregen_T': safe(v['wtregen_T'], 3), 'rrp_T': safe(v['rrp_T'], 4),
