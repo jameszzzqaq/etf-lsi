@@ -1925,9 +1925,19 @@ GLI 越高＝净流动性越宽松；与信用利差等「越高越坏」的指�
 `llms.txt` 32,813 字节 / `data.json` 475,252 字节，三条赛道自动进入，旧口径「双宽基 / 两条主线」0 残留；
 邮件预览生成成功，标题含三条赛道。
 
-**线上核验**：见本节末尾补充（流水线 run 与 contents API `?ref=gh-pages` 真值）。
+**线上核验**：首轮 run `45007544332` 主计算通过，但运行期间并发推了 README 提交，`Persist caches` 的
+`git pull --rebase` 撞上 unstaged changes 而 failure，导致 gh-pages / Cloudflare 发布被跳过；
+修复 `.github/workflows/daily.yml` commit `5da234eb0c61`（`git -c rebase.autoStash=true pull --rebase origin main`）
+后自动重跑 run `45008862573` **success**，主流程 / 缓存提交 / gh-pages / Cloudflare / 数据完整性 5 步全 PASS，
+邮件已发送，日志 0 error / 0 warning。按硬约束用 contents API `?ref=gh-pages` 取真值：
+`index.html` 715,459 字节（提取 script 700,544 字节 `node --check` 通过）、`data.json` 549,207 字节、`llms.txt` 33,229 字节；
+三赛道 `order = hs300, cyb, hldb`，顶部卡片 17 张；「A股三大主力 ETF 持仓背离」1、
+「红利低波（高股息防御主力）」1、「近5日四只红利低波ETF份额明细」1、「双轴对比 · 持仓占比 vs 中证红利低波」1；
+`llms.txt` 旧口径「双宽基 / 两条主线」0 残留。线上读数（asof 2026-11-20）：
+沪深300 1.0538% / Spread +36.6、创业板 1.4364% / Spread +100.0、红利低波 1.0519% / Spread +3.0（疑似暗中减持），
+红利低波分母 `idx_mv = 4,485,596,000,000 元`（44855.96 亿元）。
 
-**回滚**：etf-lsi  revert 本提交；Worker revert `794f0a31ece9`（push 后自动重新部署）。
+**回滚**：etf-lsi revert `13025637521a`（并按需 revert `2534465665c7` / `5da234eb0c61`）；Worker revert `794f0a31ece9`（push 后自动重新部署）。
 **保密**：未写入任何密钥；`A_STOCK_API_KEY` 仍只从 GitHub Secrets 读、经 `X-API-Key` 头传递。
 
 ---
