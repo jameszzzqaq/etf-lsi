@@ -113,8 +113,10 @@ def main():
     lsi = load('lsi.json')
     ratios = load('ratios.json')
 
-    nrow = 2 + (1 if lsi else 0) + (1 if ratios else 0)
-    hr = [3.0, 3.0] + ([2.1] if lsi else []) + ([1.5] if ratios else [])
+    # 三大主力赛道按实际有效 series 数动态排布；新增/删除赛道不再越界。
+    n_track_rows = len(packs)
+    nrow = max(n_track_rows, 1) + (1 if lsi else 0) + (1 if ratios else 0)
+    hr = [3.0] * n_track_rows + ([2.1] if lsi else []) + ([1.5] if ratios else [])
     fig = plt.figure(figsize=(17, 5.0 * nrow), dpi=135)
     gs = fig.add_gridspec(nrow, 1, height_ratios=hr, hspace=0.32,
                           left=0.095, right=0.945, top=0.935, bottom=0.055)
@@ -143,7 +145,7 @@ def main():
                         no_emoji('%s · %s（截至 %s｜Spread %+.1f）' % (S['title'], S['status'], S['date'], S['spread'])))
         r += 1
 
-    # ---- 行 3：LSI vs GLI ----
+    # ---- 赛道之后：LSI vs GLI ----
     if lsi:
         ax = fig.add_subplot(gs[r, 0])
         cal = lsi.get('cal', [])
@@ -152,7 +154,7 @@ def main():
         lsi_v = h.get('lsi') or []
         gli_v = h.get('gli') or []
         m = min(len(dts), len(lsi_v), len(gli_v))
-        # 只画最近 260 个观测日：与前两行（250 交易日）及看板周期对齐，
+        # 只画最近 260 个观测日：与上方赛道图（250 交易日）及看板周期对齐，
         # 否则 820 天全画会密到看不出波动
         m = min(m, 260)
         dts, lsi_v, gli_v = dts[-m:], lsi_v[-m:], gli_v[-m:]
@@ -182,7 +184,7 @@ def main():
         axb.tick_params(labelsize=9)
         r += 1
 
-    # ---- 行 4：三大比价百分位刻度条 ----
+    # ---- 最后一行：三大比价百分位刻度条 ----
     if ratios and ratios.get('items'):
         ax = fig.add_subplot(gs[r, 0])
         keys = [k for k in ratios.get('order', []) if k in ratios['items']]
@@ -211,7 +213,7 @@ def main():
         ax.tick_params(labelsize=9)
         r += 1
 
-    fig.suptitle('A股双宽基 ETF 持仓背离 + 宏观 LSI 流动性压力 · 三合一监测（%s）'
+    fig.suptitle('A股三大主力 ETF 持仓背离 + 宏观 LSI 流动性压力 · 三合一监测（%s）'
                  % summary.get('asof', ''), **fp(17, color='#FFFFFF', y=0.982))
     fig.savefig(PNG, facecolor=BG)
     plt.close(fig)          # 释放内存，避免 Actions 上多张大图叠加

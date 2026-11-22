@@ -3,10 +3,10 @@
 三合一监测系统 · 每日全流程一键执行
 
 fetch_exchange.py（交易所官方 ETF 份额/净值，T+0，替代 westock 的滞后份额）
-  → fetch_data.py（沪深300 + 创业板 8 只 ETF / 2 个指数；交易所值优先，缺失回退 westock）
+  → fetch_data.py（三大主力 12 只 ETF / 3 个指数；交易所值优先，缺失回退 westock；红利低波市值走 Worker）
   → fetch_ratios.py（三大风格/股债比价）
   → fetch_fred_lsi.py（FRED 20 序列 + LSI + 20 项报警）
-  → analyze_report.py（双宽基诊断）
+  → analyze_report.py（三大主力诊断）
   → fetch_signals.py（市场环境四件套：估值/境内资金面/折溢价/市场宽度）
   → render.py（高清监测图 PNG）
   → make_dashboard.py（三合一交互 HTML 看板）

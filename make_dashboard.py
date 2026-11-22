@@ -3,15 +3,16 @@
 三合一交互式 HTML 总控看板（自包含、无外部依赖、离线可用）
 
 区块：
-  ① 顶部三张状态卡（沪深300 / 创业板 / 宏观 LSI）
+  ① 顶部状态卡（沪深300 / 创业板 / 红利低波 / 宏观 LSI）
   ② 沪深300 双轴交互图（悬停看每日明细）
   ③ 创业板 双轴交互图
+  ③-b 红利低波 双轴交互图
   ④ 四大风格 / 股债比价全周期百分位
   ⑤ 宏观 LSI 核心面板 + V57 资金流向雷达
   ⑥ 20 项背景报警全量明细表（原始数据 / 公式 / 结果 / 阈值 / 红绿报警）
   ⑦ 正面宽松状态指示
   ⑧ 四维全景合成诊断
-  ⑨ 近 5 日 ETF 份额明细表（两条赛道）
+  ⑨ 近 5 日 ETF 份额明细表（三大主力赛道）
 """
 import json, os, sys, datetime
 
@@ -69,9 +70,9 @@ def write_icons():
         files.append('icon-%d.png' % size)
 
     manifest = {
-        'name': 'A股双宽基 ETF + 宏观 LSI 三合一监测',
+        'name': 'A股三大主力 ETF + 宏观 LSI 三合一监测',
         'short_name': 'ETF监测',
-        'description': '沪深300 / 创业板 ETF 持仓背离 + 美联储宏观 LSI 流动性压力指数',
+        'description': '沪深300 / 创业板 / 红利低波 ETF 持仓背离 + 美联储宏观 LSI 流动性压力指数',
         'start_url': './index.html',
         'scope': './',
         'display': 'standalone',
@@ -141,7 +142,7 @@ def main():
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>A股双宽基 ETF + 宏观 LSI · 三合一监测看板</title>
+<title>A股三大主力 ETF + 宏观 LSI · 三合一监测看板</title>
 <!-- 添加到主屏幕（PWA）相关：iOS Safari / Android Chrome 均支持独立图标启动 -->
 <meta name="theme-color" content="#181A20">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -266,7 +267,7 @@ border-radius:10px;padding:12px 15px;margin-bottom:10px;font-size:12.8px;line-he
 
 <div class="bar">
   <div>
-    <h1>A股双宽基 ETF 持仓背离 + 宏观 LSI 流动性压力 · 三合一监测</h1>
+    <h1>A股三大主力 ETF 持仓背离 + 宏观 LSI 流动性压力 · 三合一监测</h1>
     <div class="meta" id="subMeta"></div>
   </div>
   <div class="badges" id="badges"></div>

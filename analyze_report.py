@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-模块一 + 模块二 · 双宽基诊断
-对沪深300、创业板两条赛道分别计算：
+模块一 · 三大主力赛道诊断
+对沪深300、创业板、红利低波三条赛道分别计算：
   持仓市值占比、250日分位、Spread 开口差、20日回归斜率、近5日份额净申赎、5档背离状态
-输出：summary.json（含两条赛道）+ series_<key>.json（供绘图/看板）
+输出：summary.json（含三条赛道）+ series_<key>.json（供绘图/看板）
 """
 import json, os, sys, statistics
 
@@ -344,7 +344,7 @@ def main():
             out['tracks'][key] = s
             out['order'].append(key)
     if not out['tracks']:
-        print('!! 两条赛道均无有效数据')
+        print('!! 所有赛道均无有效数据')
         sys.exit(1)
     out['asof'] = max(t['date'] for t in out['tracks'].values())
     with open(SUMMARY, 'w', encoding='utf-8') as fp:

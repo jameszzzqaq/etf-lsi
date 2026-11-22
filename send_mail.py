@@ -2,11 +2,11 @@
 """
 三合一汇总日报邮件
 
-标题：[A股双宽基主力 & 宏观LSI日报] YYYY-MM-DD | 沪深300: <状态> | 创业板: <状态> | 宏观: <状态> (LSI: XX.X BP)
+标题：[A股三大主力 & 宏观LSI日报] YYYY-MM-DD | 沪深300: <状态> | 创业板: <状态> | 红利低波: <状态> | 宏观: <状态> (LSI: XX.X BP)
 
-正文：① 沪深300 诊断 + 份额明细　② 创业板 诊断 + 份额明细
-     ③ 三大风格/股债性价比百分位　④ LSI 核心面板 + 20项报警明细表 + 四维诊断
-     ⑤ 市场环境四件套（估值 / 境内资金面 / 折溢价 / 市场宽度）　⑥ 内嵌监测图
+正文：①②③ 三大主力赛道诊断 + 份额明细
+     ④ 三大风格/股债性价比百分位　⑤ LSI 核心面板 + 20项报警明细表 + 四维诊断
+     ⑥ 市场环境监测（估值 / 境内资金面 / 折溢价 / 市场宽度）　⑦ 内嵌监测图
 
 凭证优先级：环境变量 ETF_SMTP_USER / ETF_SMTP_PASS / ETF_MAIL_TO（GitHub Actions Secrets）
             > email_config.json
@@ -114,7 +114,7 @@ def track_block(S, title_idx):
 def ratio_block(R):
     if not R or not R.get('items'):
         return ''
-    h = '<div style="margin:0 0 18px"><h3 style="font-size:15px;margin:0 0 8px">③ 三大风格轮动 &amp; 股债性价比 · 历史百分位（含 20 / 80 分位门槛比值与距离）</h3>'
+    h = '<div style="margin:0 0 18px"><h3 style="font-size:15px;margin:0 0 8px">④ 三大风格轮动 &amp; 股债性价比 · 历史百分位（含 20 / 80 分位门槛比值与距离）</h3>'
     h += '<table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;font-size:12px;border-color:#DDD;width:100%">'
     h += ('<tr style="background:#EFEFEF"><th>比价</th><th>公式（分子 ÷ 分母）</th><th>当前比值</th>'
           '<th>20 分位比值<br><span style="font-weight:400;font-size:10.5px">（进绿区门槛）</span></th>'
@@ -172,7 +172,7 @@ def lsi_block(L):
     if not L:
         return ''
     c = L['core']
-    h = '<div style="margin:0 0 18px"><h3 style="font-size:15px;margin:0 0 8px">④ 美元宏观 LSI 压力指数 &amp; 20 项背景报警</h3>'
+    h = '<div style="margin:0 0 18px"><h3 style="font-size:15px;margin:0 0 8px">⑤ 美元宏观 LSI 压力指数 &amp; 20 项背景报警</h3>'
     # 核心面板
     h += '<table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;font-size:12px;border-color:#DDD;width:100%">'
     h += '<tr style="background:#EFEFEF"><th>指标</th><th>数值</th><th>指标</th><th>数值</th></tr>'
@@ -274,7 +274,7 @@ def _pct_word(p):
 
 
 def signals_block(S):
-    """⑤ 市场环境四件套：指数估值 / 境内资金面 / ETF 折溢价 / 市场宽度。
+    """⑥ 市场环境监测：指数估值 / 境内资金面 / ETF 折溢价 / 市场宽度。
 
     四块彼此独立抓取，任何一块缺失就整块跳过（不留空表头）。
     与看板 ⑨⑩⑪⑫ 面板同源，字段口径见 a-stock-api README §2。
@@ -294,7 +294,7 @@ def signals_block(S):
     bp_col = lambda v: '#333' if v is None else (CLR_UP if v > 0 else (CLR_DOWN if v < 0 else '#333'))
 
     h = ('<div style="margin:0 0 18px"><h3 style="font-size:15px;margin:0 0 8px">'
-         '⑤ 市场环境监测 · 指数估值 / 境内资金面 / 国债曲线 / ETF 折溢价 / 市场宽度</h3>')
+         '⑥ 市场环境监测 · 指数估值 / 境内资金面 / 国债曲线 / ETF 折溢价 / 市场宽度</h3>')
     h += ('<div style="color:#666;font-size:11.5px;margin-bottom:3px">更新 %s　｜　'
           '数据源：蛋卷基金（估值分位）· 中国货币网（SHIBOR / 银行间回购定盘）· '
           '东财国债到期收益率（曲线）· 腾讯行情 + 东财净值（折溢价）· '
@@ -538,7 +538,7 @@ def signals_block(S):
     if notes:
         h += '<div style="background:#F4F6F8;border-left:4px solid #22D3EE;padding:10px 13px;' \
              'border-radius:6px;font-size:12px;margin-top:11px;line-height:1.9">' \
-             '<b>⑤ 一句话综合</b><br>'
+             '<b>⑦ 一句话综合</b><br>'
         h += '<br>'.join('· ' + n for n in notes)
         h += '</div>'
 
@@ -631,15 +631,16 @@ def main():
 
     tk = summary['tracks']
     asof = summary.get('asof', '')
-    h300 = tk.get('hs300', {})
-    cyb = tk.get('cyb', {})
     macro_txt = L['state'] if L else '—'
     lsi_txt = fmt(L['core']['lsi'], 1) if L else '—'
-    subject = ('[A股双宽基主力 & 宏观LSI日报] %s | 沪深300: %s | 创业板: %s | 宏观: %s (LSI: %s BP)'
-               % (asof, h300.get('status', '—'), cyb.get('status', '—'), macro_txt, lsi_txt))
+    # 赛道状态由 ORDER 驱动：新增/删除赛道时标题与摘要自动同步，不再写死两条。
+    track_status = [(tk.get(k, {}).get('name') or k, tk.get(k, {}).get('status', '—')) for k in ORDER]
+    status_line = '　｜　'.join('%s：%s' % (n, st) for n, st in track_status)
+    subject = '[A股三大主力 & 宏观LSI日报] %s | %s | 宏观: %s (LSI: %s BP)' % (
+        asof, ' | '.join('%s: %s' % (n, st) for n, st in track_status), macro_txt, lsi_txt)
 
     H = '<div style="font-family:Microsoft YaHei,PingFang SC,Arial,sans-serif;font-size:13px;color:#222;max-width:1000px">'
-    H += '<h2 style="font-size:18px;margin:0 0 10px">A股双宽基 ETF + 宏观 LSI 三合一日报 · %s</h2>' % esc(asof)
+    H += '<h2 style="font-size:18px;margin:0 0 10px">A股三大主力 ETF + 宏观 LSI 三合一日报 · %s</h2>' % esc(asof)
     # 顶部摘要额外带一眼宽度与估值分位：这两项是「指数涨但个股跌」这类背离的判据，
     # 放在最上面比埋在 ⑤ 里更容易被看到。
     _bt = (S or {}).get('breadth', {}).get('today') or {}
@@ -652,11 +653,11 @@ def main():
         _extra = '　｜　宽度：涨 %d / 跌 %d（上涨占比 %.1f%%，涨停 %s）' % (
             _up, _bt.get('down') or 0, _rp,
             _bt.get('limit_up') if _bt.get('limit_up') is not None else '—')
-    H += '<div style="color:#666;font-size:12px;margin-bottom:6px">沪深300：%s　｜　创业板：%s　｜　宏观：%s（报警 %s/%s 项）%s</div>' % (
-        esc(h300.get('status', '—')), esc(cyb.get('status', '—')), esc(macro_txt),
+    H += '<div style="color:#666;font-size:12px;margin-bottom:6px">%s　｜　宏观：%s（报警 %s/%s 项）%s</div>' % (
+        esc(status_line), esc(macro_txt),
         L.get('alert_count', 0) if L else 0, L.get('total', 20) if L else 20, _extra)
 
-    # 标题区追加：③ 三大风格轮动 & 股债性价比 · 历史百分位 的配置倾向
+    # 标题区追加：④ 三大风格轮动 & 股债性价比 · 历史百分位 的配置倾向
     if R and R.get('items'):
         chips = []
         for k in R.get('order', []):
@@ -670,7 +671,7 @@ def main():
                 '<b>%s</b>：分位 <b style="color:%s">%.1f%%</b>　→　<b style="color:%s">%s</b></span>'
                 % (cc, esc(it['title']), cc, it['pct'], cc, esc(it['tilt'])))
         H += ('<div style="font-size:12px;margin-bottom:14px">'
-              '<div style="color:#666;margin-bottom:4px">③ 三大风格轮动 &amp; 股债性价比 · 历史百分位 · 配置倾向：</div>'
+              '<div style="color:#666;margin-bottom:4px">④ 三大风格轮动 &amp; 股债性价比 · 历史百分位 · 配置倾向：</div>'
               + ''.join(chips) + '</div>')
     idx = 0
     for k in ORDER:
@@ -681,7 +682,7 @@ def main():
     H += lsi_block(L)
     H += signals_block(S)
     if os.path.exists(PNG):
-        H += '<div style="margin-top:16px"><div style="font-size:13px;font-weight:600;margin-bottom:6px">⑥ 高清三合一监测图</div><img src="cid:monitor" style="max-width:100%;border:1px solid #DDD;border-radius:8px"></div>'
+        H += '<div style="margin-top:16px"><div style="font-size:13px;font-weight:600;margin-bottom:6px">⑦ 高清三合一监测图</div><img src="cid:monitor" style="max-width:100%;border:1px solid #DDD;border-radius:8px"></div>'
     H += '<div style="margin-top:18px;color:#888;font-size:11px;line-height:1.8">本邮件由 GitHub Actions 自动生成，数据源：腾讯自选股 westock-data（A股 ETF 份额/净值/指数）、美联储 FRED（宏观序列），以及 a-stock-api Worker 中转的蛋卷基金（估值）、中国货币网（SHIBOR/回购定盘）、东财（折溢价/涨停池）。仅供个人研究参考，不构成任何投资建议。</div>'
     H += '</div>'
 
