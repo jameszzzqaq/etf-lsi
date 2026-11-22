@@ -33,6 +33,42 @@ API_BASE = (os.environ.get('ETF_API_BASE') or 'https://a-stock-api.wj4020410.wor
 API_TIMEOUT = float(os.environ.get('ETF_API_TIMEOUT', '30'))
 
 
+def fetch_csindex_closes(symbol, start, end):
+    """从 Worker /api/csindex 取中证官网指数日K收盘（权威源），返回 {YYYY-MM-DD: close}。
+
+    westock 的 csH30269 历史只到 2024-05-08，更早的 quote 返回「数据为空」；
+    一旦用交易日历 sh000300 的 kline 点位兜底，就会把沪深300点位静默填成红利低波点位。
+    红利低波的指数点位一律以中证官网为准，覆盖全 5 年。失败返回 {}，由调用方报警。
+    """
+    key = os.environ.get('A_STOCK_API_KEY', '')
+    if not key:
+        print('::warning::  A_STOCK_API_KEY 未配置，%s 指数日K权威源无法取数' % symbol)
+        return {}
+    url = '%s/api/csindex?symbol=%s&start=%s&end=%s' % (
+        API_BASE, urllib.parse.quote(symbol), urllib.parse.quote(start), urllib.parse.quote(end))
+    req = urllib.request.Request(url, headers={
+        'X-API-Key': key,
+        'User-Agent': 'etf-lsi/1.0',
+        'Accept': 'application/json',
+    })
+    try:
+        with urllib.request.urlopen(req, timeout=max(API_TIMEOUT, 60)) as r:
+            j = json.load(r)
+        rows = j.get('data') or []
+        out = {}
+        for row in rows:
+            d = row.get('date') or ''
+            c = common.fnum(row.get('close'))
+            if d and c:
+                out[d] = c
+        print('[%s] 中证官网指数日K权威源 %d 天（%s ~ %s）'
+              % (symbol, len(out), rows[0]['date'] if rows else '-', rows[-1]['date'] if rows else '-'))
+        return out
+    except Exception as e:
+        print('::warning::  [%s] 中证官网指数日K取数失败：%s' % (symbol, str(e)[:120]))
+        return {}
+
+
 def fetch_csindex_float_mv(symbol):
     """从 Worker 取中证官网指数自由流通市值（元）与快照日期；失败返回 None，不中断整轮。"""
     key = os.environ.get('A_STOCK_API_KEY', '')
@@ -71,14 +107,16 @@ def apply_csindex_float_mv(track, block, feature):
     if not dates:
         return
     base = feature.get('trade_date') if feature.get('trade_date') in daily else dates[-1]
-    base_close = (block.get('kline_close') or {}).get(base) or (daily.get(base) or {}).get('idx_close')
+    # 【严禁】用 kline_close（sh000300 点位）回填市值：会与红利低波点位口径串味。
+    # 一律用 daily 里已被权威源纠正的 idx_close。
+    base_close = (daily.get(base) or {}).get('idx_close')
     if not base_close:
-        print('::warning::  [%s] 无快照日收盘价，跳过自由流通市值回填' % track)
+        print('::warning::  [%s] 无快照日指数收盘价，跳过自由流通市值回填' % track)
         return
     n = 0
     for d in dates:
         rec = daily[d]
-        close = (block.get('kline_close') or {}).get(d) or rec.get('idx_close')
+        close = rec.get('idx_close')
         if close:
             rec['idx_float_mv'] = feature['float_mv'] * close / base_close
             n += 1
@@ -173,10 +211,11 @@ def apply_exchange(track, results):
     return n_sh, n_nv
 
 
-def build_track(track, days, jobs):
+def build_track(track, days, jobs, authoritative_closes=None):
     cfg = TRACKS[track]
     dates = [d for d, _ in days]
     kline_close = {d: c for d, c in days}
+    authoritative_closes = authoritative_closes or {}
     results = {}
     old = {}
     if os.path.exists(CACHE):
@@ -209,7 +248,15 @@ def build_track(track, days, jobs):
             d = futs[f]
             try:
                 r = f.result()
-                r['idx_close'] = r.get('idx_close') or kline_close.get(d)
+                # 【严禁】用 kline_close（交易日历 sh000300 的点位）给任何赛道兜底指数点位：
+                # 跨标的口径不同，会静默把沪深300点位填成红利低波点位（2024-05-08 前的真实事故）。
+                # 指数点位只认两条合规来源：本赛道 quote 的真实返回、或权威源 authoritative_closes。
+                if authoritative_closes:
+                    if d in authoritative_closes:
+                        r['idx_close'] = authoritative_closes[d]
+                    else:
+                        # 权威源缺该日：清掉 quote 的脏值，绝不落库错误点位
+                        r['idx_close'] = None
                 results[d] = r
                 done += 1
                 if done % 25 == 0:
@@ -218,8 +265,26 @@ def build_track(track, days, jobs):
                 print('::warning::  [%s] 单日抓取失败 %s %s（留待下一轮回填）' % (track, d, e))
     print('[%s] fetched %d days, %.0fs' % (track, len(results), time.time() - t0))
 
+    # 已有缓存（非本轮 todo）也需要用权威源纠正——否则历史脏点位会一直留在缓存里。
+    if authoritative_closes:
+        fixed = 0
+        for d, r in results.items():
+            if d in authoritative_closes and r.get('idx_close') != authoritative_closes[d]:
+                r['idx_close'] = authoritative_closes[d]
+                fixed += 1
+        print('[%s] 权威源纠正历史点位 %d 天' % (track, fixed), flush=True)
+
     n_sh, n_nv = apply_exchange(track, results)
     print('[%s] 交易所源覆盖：份额 %d 处、净值 %d 处' % (track, n_sh, n_nv), flush=True)
+
+    # 防呆：若仍有赛道指数点位与该日沪深300点位高度吻合且不该如此，报警。
+    if cfg.get('index_symbol'):
+        suspicious = [d for d, r in results.items()
+                      if r.get('idx_close') and kline_close.get(d)
+                      and abs(r['idx_close'] - kline_close[d]) < 0.01]
+        if suspicious:
+            print('::warning::  [%s] 有 %d 天 idx_close 与沪深300点位完全相同，疑似误填（示例 %s）'
+                  % (track, len(suspicious), suspicious[:3]), flush=True)
     return {'kline_close': kline_close, 'daily': results}
 
 
@@ -236,15 +301,24 @@ def main():
                 out = json.load(fp)
         except Exception:
             out = {}
-    # 每条需要中证官方市值的赛道只请求一次，避免按交易日重复打 Worker。
+    # 每条需要中证官方市值 / 权威点位的赛道只请求一次，避免按交易日重复打 Worker。
     features = {}
+    idx_closes = {}
+    span_start, span_end = days[0][0], days[-1][0]
     for tk in ORDER:
         sym = TRACKS[tk].get('float_mv_symbol')
         if sym and sym not in features:
             features[sym] = fetch_csindex_float_mv(sym)
+        isym = TRACKS[tk].get('index_symbol')
+        if isym and isym not in idx_closes:
+            idx_closes[isym] = fetch_csindex_closes(isym, span_start, span_end)
+        # 硬校验：声明了权威源的赛道若取数为空，宁可让流水线红掉，也绝不静默用脏点位上线。
+        if isym and not idx_closes.get(isym):
+            raise RuntimeError('[%s] 指数点位权威源 %s 取数为空，拒绝用不可信数据上线' % (tk, isym))
 
     for tk in ORDER:
-        block = build_track(tk, days, None)
+        isym = TRACKS[tk].get('index_symbol')
+        block = build_track(tk, days, None, authoritative_closes=idx_closes.get(isym) if isym else None)
         sym = TRACKS[tk].get('float_mv_symbol')
         if sym:
             apply_csindex_float_mv(tk, block, features.get(sym))

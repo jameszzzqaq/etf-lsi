@@ -80,6 +80,10 @@ TRACKS = {
         'index_code': 'csH30269',
         'index_name': '中证红利低波',
         # 维护须知：westock 取 H30269 必须加 cs 前缀（csH30269）；直接写 H30269 会返回空数据。
+        # 【重要】westock 的 csH30269 历史只到 2024-05-08（此前 quote 返回「数据为空」）。
+        # 指数点位必须走权威源 index_symbol → 自建 Worker /api/csindex（中证官网日K，覆盖全 5 年），
+        # 绝不能用交易日历 sh000300 的 kline 点位兜底（会静默把沪深300点位填成红利低波点位）。
+        'index_symbol': 'H30269',
         # 指数自由流通市值走自建 Worker /api/csindex-feature（中证官网 calMkvSum），
         # 与沪深300/创业板的 westock circulating_market_cap（普通流通市值）口径不同，文案必须写明。
         'float_mv_symbol': 'H30269',
