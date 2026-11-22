@@ -1019,7 +1019,7 @@ A 股（境内）  fetch_exchange.py ── a-stock-api Worker ──┬─ quer
 ### 12.5 可复制给 AI 的提示词
 
 ```text
-【任务】维护 https://github.com/wj624/etf-lsi（沪深300 + 创业板 ETF 持仓背离 + 宏观 LSI 压力指数日报）。
+【任务】维护 https://github.com/wj624/etf-lsi（沪深300 / 创业板 / 红利低波 ETF 持仓背离 + 宏观 LSI 压力指数日报）。
 
 【先读什么】
 1. README 第四章「数据源、单位换算与剔除项」→ 认两条链路：宏观走 FRED，A 股走自建 Worker。
@@ -1049,7 +1049,8 @@ A 股（境内）  fetch_exchange.py ── a-stock-api Worker ──┬─ quer
 - 复权后缀**按类型**：三条「指数 ÷ 指数」不写后缀（指数无复权概念），只有 `bond`（两只 ETF）保留「均前复权」。不许一刀切删掉，也不许一刀切加回来。
 - `pct_pub` 只是**副标尺**（只有配了 `sample_from` 的比价才输出），**不许用它替换主口径 `pct`**——四条必须同一样本区间才能横向比；要换窗口就四条一起换、重新评估。
 - ④ 的两条腿必须**同一周**：`build()` 尾部会补「当周」，若两条腿的当周时间戳差一天属正常（westock 打当天、csindex 打最后已发布日线），不要「修正」成全局按周配对（见附录 F）。
-- 中证自定义指数（`H` 开头，如 `H30269`）必须写成 `csindex:H30269` 走 `/api/csindex`；**不要换回 `westock-data kline`**（实测返回空表，会让 ④ 静默少一张卡且退出码仍是 0）。日K→周K 只能按 ISO 周取**最后一个交易日收盘**，不许改成周内均值/求和。
+- **代码前缀别混用**：③ 红利低波赛道在 `config.py` 的 `index_code` 必须写 **`csH30269`（必须加 `cs` 前缀）**，否则 westock `quote` / `kline` 返回空数据；④ 比价模块仍写 `csindex:H30269` 走 `/api/csindex` 日K再聚合周K，不要改成 `westock-data kline`（旧的「H30269 实测空表」正是漏了 `cs` 前缀）。日K→周K 只能按 ISO 周取**最后一个交易日收盘**，不许改成周内均值/求和。
+- 红利低波的持仓占比分母是**中证官网指数自由流通市值**（Worker `/api/csindex-feature`），沪深300 / 创业板才是 westock 普通流通市值；**不许混用**，也不要拿三条赛道的持仓占比绝对值直接比大小，只比各自分位与 Spread。
 - Worker 全端点（除 `/`）强制 `X-API-Key`：密钥只从环境变量 `A_STOCK_API_KEY` 读，**任何形式的硬编码 / 提交到仓库 / 写进 config 都算错**。
 - `config.py` 里 `rrp_peak_window` 固定 `500`（Pine V81 是 2500），这是**主动不升级**，不要去「修正」它。
 
