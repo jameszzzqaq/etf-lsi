@@ -1,7 +1,7 @@
 {
-  "name": "A股双宽基 ETF + 宏观 LSI 三合一监测",
+  "name": "A股三大主力 ETF + 宏观 LSI 三合一监测",
   "short_name": "ETF监测",
-  "description": "沪深300 / 创业板 ETF 持仓背离 + 美联储宏观 LSI 流动性压力指数",
+  "description": "沪深300 / 创业板 / 红利低波 ETF 持仓背离 + 美联储宏观 LSI 流动性压力指数",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

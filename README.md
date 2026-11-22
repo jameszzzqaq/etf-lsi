@@ -527,7 +527,8 @@ daily_run.py
 | `analyze_report.py` | 三大主力诊断 |
 | `fetch_signals.py` | 市场环境六件套取数（指数估值 / 境内资金面 / 国债曲线 / ETF 折溢价 / 市场宽度 / 跨资产比价），六项独立容错，写 `signals.json` + 追加 `_breadth_history.json` |
 | `render.py` | matplotlib 动态行数布局 PNG（赛道数 + LSI + 比价） |
-| `make_dashboard.py` | 自包含交互 HTML（无外部依赖，离线可看） |
+| `make_dashboard.py` | 自包含交互 HTML（无外部依赖，离线可看）；**同时生成 `manifest.json`，改名/改赛道必须两边同步** |
+| `manifest.json` | PWA 元数据（名称/描述），必须与 `make_dashboard.py` 的 `manifest` 字典逐字一致；2026-11-22 曾只改生成脚本、漏改本文件，审计后已补 |
 | `send_mail.py` | 汇总邮件（标题按 `ORDER` 动态列赛道状态，正文七段：①②③ 三大主力诊断 → ④ 风格/股债性价比 → ⑤ 宏观 LSI（核心表含 `US02Y − EFFR` 加息/降息周期判据）→ ⑥ 市场环境监测（估值/资金面/国债/折溢价/宽度/跨资产比价，末尾附「一句话综合」）→ ⑦ 内嵌 PNG） |
 | `daily_run.py` | 编排入口 |
 | `westock-data/` | 腾讯自选股取数 CLI（Node，零第三方依赖，随仓库携带） |
@@ -1894,9 +1895,7 @@ GLI 越高＝净流动性越宽松；与信用利差等「越高越坏」的指�
 **回滚**：etf-lsi `git revert 34f01b0fe580` + `git revert de7b8145909c`；Worker `git revert a282201165c7`（push 后自动重新部署）。
 **保密**：密钥链路未动，`A_STOCK_API_KEY` 仍只从 GitHub Secrets 读、经 `X-API-Key` 头传递，未写进代码或仓库文件。
 
----
-
-## 2026-11-22 · 上线第三条主力赛道「红利低波」（三大主力）
+### M. 2026-11-22：上线第三条主力赛道「红利低波」（三大主力）
 
 用户确认「三大主力」口径后，把本地预览的 `hldb` 赛道正式推上线。选它而不是中证红利的理由：
 `512890` 单只 303.5 亿 > 中证红利最大 `515180` 188.6 亿，且严格跟踪 `H30269` 的 4 只 ETF 合计更集中；
@@ -1911,7 +1910,10 @@ GLI 越高＝净流动性越宽松；与信用利差等「越高越坏」的指�
 | `make_dashboard.py` | 标题 / 元数据 / PWA manifest 改「三大主力」；卡片、双轴图、份额明细表按 `ORDER` 自动扩展 |
 | `make_llm_summary.py` | 头部文案「双宽基 / 两条主线」改「三大主力 / 三条主线」；补充分母口径警告：红利低波用**指数自由流通市值**，与另两条的普通流通市值不可混用 |
 | `send_mail.py` | 邮件标题与摘要按 `ORDER` 动态列赛道；正文段落编号顺延到 ⑦ |
-| `daily_run.py` / `README.md` | 流水线说明与维护手册同步更正；明确 **`csH30269` 必须加 `cs` 前缀** |
+| `daily_run.py` / `README.md` | 流水线说明与维护手册同步更正；明确 **`csH30269` 必须加 `cs` 前缀**；AI 提示词另以 commit `2534465665c7` 单独更正，防止下一轮 AI 按旧「沪深300 + 创业板」口径改坏 |
+| `manifest.json` | PWA 名称/描述由「双宽基 / 沪深300 + 创业板」改成「三大主力 / 沪深300 / 创业板 / 红利低波」。**审计发现：首轮只改了 `make_dashboard.py` 的 manifest 字典，仓库根目录 `manifest.json` 漏改**（gh-pages 产物是新的，仓库老家是旧的），本次补齐 |
+| `.github/workflows/daily.yml` | commit `5da234eb0c61`：缓存提交后的 `git pull --rebase` 加 `rebase.autoStash=true`，避免运行期间 main 有新提交时因 unstaged changes 红掉并跳过 Pages 发布 |
+| **文档审计（同日）** | 本节纳入附录 M；12.1 文件职责表补 `manifest.json` 同步纪律；`make_dashboard.py` 残留注释改「三大主力」；根目录 `manifest.json` 补齐；`a-stock-api` §13 同步补录 2026-11-22 三条，两仓冒烟口径统一 14 项 |
 
 **分母口径**：沪深300 / 创业板继续用 westock `circulating_market_cap`（普通流通市值）；红利低波用中证指数官网 `calMkvSum`
 （指数自由流通市值，Worker 新端点 `/api/csindex-feature` 透传，`2026-11-20` 实测 `44855.96 亿元`）。
@@ -1937,8 +1939,10 @@ GLI 越高＝净流动性越宽松；与信用利差等「越高越坏」的指�
 沪深300 1.0538% / Spread +36.6、创业板 1.4364% / Spread +100.0、红利低波 1.0519% / Spread +3.0（疑似暗中减持），
 红利低波分母 `idx_mv = 4,485,596,000,000 元`（44855.96 亿元）。
 
-**回滚**：etf-lsi revert `13025637521a`（并按需 revert `2534465665c7` / `5da234eb0c61`）；Worker revert `794f0a31ece9`（push 后自动重新部署）。
+**回滚**：etf-lsi revert `13025637521a`（并按需 revert `2534465665c7` / `5da234eb0c61` / `1e1471cae995` 与本次文档审计提交）；`manifest.json` 随 `make_dashboard.py` 一起回滚，不要只回一边；Worker revert `794f0a31ece9`（push 后自动重新部署）。
 **保密**：未写入任何密钥；`A_STOCK_API_KEY` 仍只从 GitHub Secrets 读、经 `X-API-Key` 头传递。
+
+**文档同步核对（2026-11-22 审计）**：本节已并入附录序列（M），`a-stock-api` README §13 同步补了 2026-11-22 三条变更；两仓「13 项冒烟」统一更正为当前 14 项（历史记录保留并标注「当时」）；`make_dashboard.py` 中残留的「双宽基交互图」注释与仓库根目录 `manifest.json` 的旧 PWA 文案一并补齐。**版本记录纪律：以后每次改 `make_dashboard.py` 的 manifest 字典，必须同步改仓库根目录 `manifest.json`，并在本附录追加一条记录。**
 
 ---
 

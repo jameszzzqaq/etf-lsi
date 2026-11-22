@@ -471,7 +471,7 @@ if (MR && MR.gold_silver && MR.gold_oil && MR.copper_gold && MR.kospi_gold) {
   $('macroRatioCards').style.display = '';
 }
 
-/* ---------- 双宽基交互图（滚轮缩放 / 拖拽平移 / 区间按钮） ---------- */
+/* ---------- 三大主力交互图（滚轮缩放 / 拖拽平移 / 区间按钮） ---------- */
 const ZMIN = 15;                                  /* 窗口最窄保留 15 个点 */
 const RANGES = [['1M',21],['3M',63],['6M',126],['1Y',250],['5Y',0]];
 
