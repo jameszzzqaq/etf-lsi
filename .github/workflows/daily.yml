@@ -109,7 +109,11 @@ jobs:
             echo "缓存无变化，跳过提交"
           else
             git commit -m "chore: update caches $(date -u '+%Y-%m-%d %H:%M UTC')"
-            git pull --rebase origin main || { echo "::error::rebase 失败，交由下次调度"; exit 1; }
+            # 2026-11-22 事故：若运行期间有人往 main 推了 README（或任何提交），
+            # 本地流水线产物（如 lsi_status.json）会变成 unstaged changes，
+            # 直接 pull --rebase 会报「cannot pull with rebase: You have unstaged changes」并红掉，
+            # 连带跳过后面的 gh-pages / Cloudflare 发布。autoStash 让它先暂存再重放。
+            git -c rebase.autoStash=true pull --rebase origin main || { echo "::error::rebase 失败，交由下次调度"; exit 1; }
             git push origin HEAD:main
             echo "缓存已提交"
           fi
