@@ -44,8 +44,11 @@ def fetch_csindex_closes(symbol, start, end):
     if not key:
         print('::warning::  A_STOCK_API_KEY 未配置，%s 指数日K权威源无法取数' % symbol)
         return {}
+    # 【关键】中证官网要求 startDate/endDate 为 YYYYMMDD（无横杠）。
+    # 传 YYYY-MM-DD 会被官网截断到 2025-12-31（实测），导致近端点位缺失、市值回填跳过、赛道消失。
+    start_c = start.replace('-', ''); end_c = end.replace('-', '')
     url = '%s/api/csindex?symbol=%s&start=%s&end=%s' % (
-        API_BASE, urllib.parse.quote(symbol), urllib.parse.quote(start), urllib.parse.quote(end))
+        API_BASE, urllib.parse.quote(symbol), urllib.parse.quote(start_c), urllib.parse.quote(end_c))
     req = urllib.request.Request(url, headers={
         'X-API-Key': key,
         'User-Agent': 'etf-lsi/1.0',
@@ -106,12 +109,20 @@ def apply_csindex_float_mv(track, block, feature):
     dates = sorted(daily)
     if not dates:
         return
-    base = feature.get('trade_date') if feature.get('trade_date') in daily else dates[-1]
     # 【严禁】用 kline_close（sh000300 点位）回填市值：会与红利低波点位口径串味。
-    # 一律用 daily 里已被权威源纠正的 idx_close。
+    # 一律用 daily 里已被权威源纠正的 idx_close 作 base。
+    # 快照日若恰好无点位（如权威源截断），往前找最近一个有 idx_close 的交易日兜底，
+    # 绝不因单日缺失就整段跳过（曾导致 hldb 赛道消失）。
+    base = feature.get('trade_date') if feature.get('trade_date') in daily else dates[-1]
     base_close = (daily.get(base) or {}).get('idx_close')
     if not base_close:
-        print('::warning::  [%s] 无快照日指数收盘价，跳过自由流通市值回填' % track)
+        for d in reversed(dates):
+            c = (daily.get(d) or {}).get('idx_close')
+            if c:
+                base, base_close = d, c
+                break
+    if not base_close:
+        print('::warning::  [%s] 无任何交易日指数收盘价，跳过自由流通市值回填' % track)
         return
     n = 0
     for d in dates:
@@ -315,6 +326,13 @@ def main():
         # 硬校验：声明了权威源的赛道若取数为空，宁可让流水线红掉，也绝不静默用脏点位上线。
         if isym and not idx_closes.get(isym):
             raise RuntimeError('[%s] 指数点位权威源 %s 取数为空，拒绝用不可信数据上线' % (tk, isym))
+        # 硬校验：权威源最新日期必须覆盖到展示窗口末端附近。
+        # 中证官网对 YYYY-MM-DD 格式会静默截断到上一年末（实测），曾导致 hldb 近端全空、赛道消失。
+        if isym:
+            last_auth = max(idx_closes[isym])
+            if last_auth < span_end:
+                raise RuntimeError('[%s] 指数点位权威源最新日 %s 早于窗口末端 %s，疑似上游截断，'
+                                   '拒绝用不完整数据上线' % (tk, last_auth, span_end))
 
     for tk in ORDER:
         isym = TRACKS[tk].get('index_symbol')
