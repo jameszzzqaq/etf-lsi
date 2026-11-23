@@ -193,6 +193,11 @@ td.raw,td.fm{font-family:"Microsoft YaHei",sans-serif;font-size:11.6px;color:var
 .foot{color:var(--sub);font-size:11.6px;margin-top:8px;line-height:1.85}
 .legend{display:flex;gap:18px;flex-wrap:wrap;font-size:12px;color:var(--sub);margin:2px 0 6px}
 .legend i{display:inline-block;width:20px;height:3px;border-radius:2px;vertical-align:middle;margin-right:6px}
+.ckleg{display:flex;gap:14px;flex-wrap:wrap;font-size:11.8px;color:var(--sub);margin:6px 0 4px}
+.ckleg label{display:inline-flex;align-items:center;gap:5px;cursor:pointer;user-select:none}
+.ckleg input{accent-color:#5b8def;width:13px;height:13px;cursor:pointer;margin:0}
+.ckleg i{display:inline-block;width:16px;height:3px;border-radius:2px}
+.ckleg .off{opacity:.38}
 /* 缩放工具条（三张图共用） */
 .zbar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:2px 0 8px}
 .zbtn{background:var(--panel2);border:1px solid var(--grid);color:var(--sub);font-size:11.5px;
@@ -309,6 +314,12 @@ border-radius:10px;padding:12px 15px;margin-bottom:10px;font-size:12.8px;line-he
   <div id="usGapBox" style="display:none">
     <div class="subh" id="usGapH"></div>
     <svg id="usGapChart" viewBox="0 0 1000 190"></svg>
+  </div>
+  <div id="crisisBox" style="display:none">
+    <div class="subh" id="crisisH"></div>
+    <div class="ckleg" id="crisisLegend"></div>
+    <div class="tip" id="crisisTip"></div>
+    <svg id="crisisChart" viewBox="0 0 1000 300" class="zc"></svg>
   </div>
   <div id="flowBox"></div>
 </div>
@@ -946,6 +957,160 @@ if (D.lsi) {
     + '<text x="' + (W - Rr) + '" y="' + (H - 7) + '" fill="#6b7484" font-size="10.5" text-anchor="end" '
     + 'font-family="Consolas">' + esc(DD[n - 1]) + '</text>';
   $('usGapChart').innerHTML = g;
+})();
+
+/* ---------- ⑤-4 危机预警组合图（近 5 年 · 6 线可勾选 · 危机背景带） ---------- */
+(function renderCrisisCombo(){
+  const L = D.lsi;
+  if (!L || !L.hist || !L.cal) return;
+  const H = L.hist, cal = L.cal;
+  // 6 条序列定义：key / 名称 / 颜色 / 保留小数位
+  const SERIES = [
+    {k:'credit',       name:'信用利差 OAS', color:'#E26924', dec:0},
+    {k:'effr',         name:'EFFR',          color:'#6737E9', dec:1},
+    {k:'us02y',        name:'US02Y',         color:'#CD12EE', dec:1},
+    {k:'t10yie',       name:'T10YIE',        color:'#D8DE08', dec:1},
+    {k:'dfii10',       name:'DFII10 实际利率',color:'#C9D1DC', dec:1},
+    {k:'cpi_yoy',      name:'通胀 YoY',      color:'#00D9D9', dec:1},
+  ];
+  const crisis = H.crisis_signal || [];
+  // 至少要有信用利差 + 一条利率序列才画
+  if (!H.credit || !H.effr) return;
+  const len = Math.min.apply(null, [cal.length].concat(SERIES.map(s=>(H[s.k]||[]).length)));
+  const n = len; // 近 5 年：用全部可用历史（约 1300 交易日）
+  if (n < 60) return;
+  $('crisisBox').style.display = '';
+
+  // 找 y 轴范围：只统计当前勾选中的序列（初始全选）
+  function activeKeys(){ return SERIES.filter(s=>{
+    const cb = document.getElementById('ck_'+s.k); return !cb || cb.checked;
+  }).map(s=>s.k); }
+  function computeRange(keys){
+    let mn=Infinity, mx=-Infinity, cnt=0;
+    for (let i=0;i<n;i++) for (const k of keys){
+      const v=(H[k]||[])[i];
+      if (v===null||v===undefined||isNaN(v)) continue;
+      if (v<mn) mn=v; if (v>mx) mx=v; cnt++;
+    }
+    if (cnt<2){ mn=-50; mx=600; }
+    const pad=(mx-mn)*0.08||20;
+    return {mn:mn-pad, mx:mx+pad};
+  }
+
+  // 图例（默认全选）
+  const lg=$('crisisLegend');
+  lg.innerHTML = SERIES.map(s=>
+    '<label data-k="'+s.k+'"><input type="checkbox" id="ck_'+s.k+'" checked>'+
+    '<i style="background:'+s.color+'"></i>'+s.name+'</label>').join('') +
+    '<label style="cursor:default"><i style="background:#F7D308;opacity:.5"></i>危机判定带</label>';
+
+  const W=1000, Hh=300, Lf=58, Rr=16, Tp=18, Bt=30;
+  const X=i=>Lf+i*(W-Lf-Rr)/Math.max(1,n-1);
+  let range=computeRange(activeKeys());
+  const Y=v=>Tp+(range.mx-v)/Math.max(1e-9,(range.mx-range.mn))*(Hh-Bt-Tp);
+
+  function render(){
+    const keys=activeKeys();
+    range=computeRange(keys);
+    let g='';
+    // 危机背景带：crisis_signal 为 true 的连续区间画淡黄矩形
+    let bs=-1;
+    for (let i=0;i<=n;i++){
+      const on = i<n && crisis[i]===true;
+      if (on && bs<0) bs=i;
+      if (!on && bs>=0){
+        const x0=X(bs), x1=X(i-1);
+        g+='<rect x="'+x0.toFixed(1)+'" y="'+Tp+'" width="'+Math.max(1,x1-x0).toFixed(1)+
+           '" height="'+(Hh-Bt-Tp)+'" fill="#F7D308" opacity="0.18"/>';
+        bs=-1;
+      }
+    }
+    // y 轴整齐刻度
+    const span=range.mx-range.mn, mag=Math.pow(10,Math.floor(Math.log10(span/5||1)));
+    const nrm=(span/5)/mag, step=(nrm<=1?1:nrm<=2?2:nrm<=5?5:10)*mag;
+    for (let t=Math.ceil(range.mn/step)*step;t<=range.mx+1e-9;t+=step){
+      const yy=Y(t);
+      g+='<line x1="'+Lf+'" y1="'+yy.toFixed(1)+'" x2="'+(W-Rr)+'" y2="'+yy.toFixed(1)+
+         '" stroke="#2A2F39" stroke-width="1"/>'+
+         '<text x="'+(Lf-8)+'" y="'+(yy+4).toFixed(1)+'" fill="#8A93A3" font-size="10.5" '+
+         'text-anchor="end" font-family="Consolas">'+t.toFixed(0)+'</text>';
+    }
+    // 零线
+    if (range.mn<0 && range.mx>0){
+      const y0=Y(0);
+      g+='<line x1="'+Lf+'" y1="'+y0.toFixed(1)+'" x2="'+(W-Rr)+'" y2="'+y0.toFixed(1)+
+         '" stroke="#E8453C" stroke-width="1" stroke-dasharray="4 4" opacity="0.6"/>';
+    }
+    // 6 条线
+    for (const s of SERIES){
+      const cb=document.getElementById('ck_'+s.k);
+      if (cb && !cb.checked) continue;
+      const arr=H[s.k]||[];
+      let d='',on=false;
+      for (let i=0;i<n;i++){
+        const v=arr[i];
+        if (v===null||v===undefined||isNaN(v)){ on=false; continue; }
+        d+=(on?'L':'M')+X(i).toFixed(1)+' '+Y(v).toFixed(1)+' ';
+        on=true;
+      }
+      if (d) g+='<path d="'+d+'" fill="none" stroke="'+s.color+'" stroke-width="1.6" stroke-linejoin="round" opacity="0.9"/>';
+    }
+    // 端点日期
+    g+='<text x="'+Lf+'" y="'+(Hh-8)+'" fill="#6b7484" font-size="10.5" font-family="Consolas">'+esc(String(cal[0]))+'</text>'+
+       '<text x="'+(W-Rr)+'" y="'+(Hh-8)+'" fill="#6b7484" font-size="10.5" text-anchor="end" font-family="Consolas">'+esc(String(cal[n-1]))+'</text>';
+    // 悬停十字线占位（默认隐藏）
+    g+='<line class="ccross" x1="0" y1="'+Tp+'" x2="0" y2="'+(Hh-Bt)+'" stroke="#8A93A3" stroke-width="1" opacity="0"/>';
+    $('crisisChart').innerHTML=g;
+  }
+
+  // 标题：当前状态 + 历史触发天数
+  const lastCrisis = crisis[n-1]===true;
+  const crisisDays = crisis.slice(0,n).filter(x=>x===true).length;
+  const creditNow=(H.credit||[])[n-1];
+  $('crisisH').innerHTML = '⑤-4 潜在危机判定 · 利率收敛 + 高利差 · 近 '+n+' 个交易日（约 5 年）'+
+    '　｜　判定：|EFFR−T10YIE| &lt; 50 且 |US02Y−T10YIE| &lt; 50 且 信用利差 &gt; 400bp'+
+    '　｜　当前 <b style="color:'+(lastCrisis?'#E8453C':'#1FB37A')+'">'+(lastCrisis?'⚠ 已触发':'✅ 未触发')+'</b>'+
+    '　｜　历史触发 '+crisisDays+' 天'+
+    (creditNow!==null&&creditNow!==undefined?'（今 '+creditNow.toFixed(0)+' bp）':'');
+
+  // 勾选事件：取消勾选实时重绘
+  lg.addEventListener('change',()=>{
+    for (const lab of lg.querySelectorAll('label[data-k]')){
+      const cb=lab.querySelector('input');
+      lab.classList.toggle('off', !cb.checked);
+    }
+    render();
+  });
+  render();
+
+  // 悬停明细
+  const el=$('crisisChart'), tip=$('crisisTip');
+  el.addEventListener('mousemove',ev=>{
+    const rc=el.getBoundingClientRect();
+    const px=(ev.clientX-rc.left)/rc.width*1000;
+    let i=Math.round((px-Lf)/Math.max(1,(W-Lf-Rr))*(n-1));
+    i=Math.max(0,Math.min(n-1,i));
+    const cross=el.querySelector('.ccross');
+    if(cross){cross.setAttribute('x1',X(i).toFixed(1));cross.setAttribute('x2',X(i).toFixed(1));cross.setAttribute('opacity','.7');}
+    let h='<b>'+esc(String(cal[i]))+'</b>';
+    for (const s of SERIES){
+      const cb=document.getElementById('ck_'+s.k);
+      if (cb && !cb.checked) continue;
+      const v=(H[s.k]||[])[i];
+      h+='<div style="color:'+s.color+'">'+s.name+' '+(v===null||v===undefined?'—':fmt(v,s.dec)+' bp')+'</div>';
+    }
+    h+='<div style="color:'+(crisis[i]===true?'#F7D308':'#8A93A3')+'">'+
+       (crisis[i]===true?'⚠ 危机判定：触发':'危机判定：未触发')+'</div>';
+    tip.innerHTML=h; tip.style.display='block';
+    const pr=$('lsiPanel').getBoundingClientRect();
+    let lx=ev.clientX-pr.left+16;
+    if(lx+240>pr.width) lx=ev.clientX-pr.left-236;
+    tip.style.left=lx+'px'; tip.style.top=(ev.clientY-pr.top+14)+'px';
+  });
+  el.addEventListener('mouseleave',()=>{
+    tip.style.display='none';
+    const cross=el.querySelector('.ccross'); if(cross) cross.setAttribute('opacity','0');
+  });
 })();
 
 /* ---------- 20 项报警明细表 ---------- */

@@ -487,6 +487,11 @@ def compute(cal, raw):
             # 免得看板端还要同时拿 us02y / effr 两条再逐点对齐空值。
             'us2_effr': [None if (a is None or b is None) else a - b
                          for a, b in zip(us02y, effr)],
+            # ⑤-4 危机预警组合图：四条原始序列 + 通胀 YoY，全部与 cal 等长、单位 bp。
+            # 危机判定直接复用 _b(i) 现成的 crisis_signal，与⑦报警表口径严格一致，
+            # 避免看板背景带和明细表出现两套公式。
+            'effr': effr, 't10yie': t10yie, 'us02y': us02y, 'cpi_yoy': cpi,
+            'crisis_signal': [_b(i)['crisis_signal'] for i in range(n)],
         },
         'raw_latest': {k: (raw.get(k, {}) and None) for k in []},
     }
