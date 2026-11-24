@@ -99,6 +99,13 @@ def yi(x, nd=2):
         return None
 
 
+def bps(x, sign=True):
+    """bp 展示：sign=True 带正负号（变化量），False 不带（水平值）。"""
+    if x is None:
+        return '—'
+    return (('%+.1f bp') if sign else ('%.1f bp')) % x
+
+
 def kv_table(rows, head=('项目', '数值')):
     out = ['| %s | %s |' % head, '| :--- | :--- |']
     for a, b in rows:
@@ -109,7 +116,7 @@ def kv_table(rows, head=('项目', '数值')):
 def cn_liq_center(liq):
     """与看板 renderCnLiquidity() 内 winStat() 完全同算法：
        末 WIN=20 行内跳过 null，n>=3 才返回 (均值, min, max, n)。
-       纯本地计算，不联网、不改口径 —— ⑨ 的 20 日中枢 / 波动区间是浏览器现算的，
+       纯本地计算，不联网、不改口径 —— ⑩ 面板的 20 日中枢 / 波动区间是浏览器现算的，
        不落 const D，所以这里按同一算法自算一份，让 AI 也能读到这个派生值。
     """
     rows = [r for r in (liq.get('data') or []) if isinstance(r, dict) and r.get('date')]
@@ -134,6 +141,104 @@ def cn_liq_center(liq):
         if x > hi:
             hi = x
     return (ssum / n, lo, hi, n) if n >= 3 else None
+
+
+# ── ⑬ 国债曲线「自动结论」──────────────────────────────────
+# 与看板 renderRates() 内 ratesConclusion() 同一套算法：四象限（牛熊 × 陡平）
+# ＋ 扭转档（两端一上一下）。两边算法必须同步，否则页面上写「牛平」、
+# llms.txt 里写「熊陡」，AI 抓到的就是两套结论。
+# 要害：「走阔」只表示变陡、不带方向 —— 牛陡＝松、熊陡＝紧；
+# 而 30Y−10Y 是期限溢价，两个方向都不等于宽松或收紧，故不并进结论。
+SHAPE_STEPS = ((0, '倒挂'), (20, '极度平坦'), (50, '偏平'), (120, '正常陡峭'), (None, '陡峭'))
+
+
+def rate_shape(v):
+    if v is None:
+        return '—'
+    for th, name in SHAPE_STEPS:
+        if th is None or v < th:
+            return name
+    return '陡峭'
+
+
+def rates_verdict(rates, m=20):
+    """返回 ⑬ 面板的自动结论（dict）；数据不足返回 None，绝不抛异常。"""
+    rows = [r for r in (rates.get('data') or []) if isinstance(r, dict) and r.get('date')]
+    n = len(rows)
+    lt = rates.get('latest') or {}
+    if n <= m or not lt:
+        return None
+
+    def f(k, row):
+        v = row.get(k)
+        if isinstance(v, bool) or not isinstance(v, (int, float)):
+            return None
+        return float(v)
+
+    def chg(k):
+        a, b = f(k, rows[n - 1 - m]), f(k, rows[-1])
+        return None if (a is None or b is None) else (b - a) * 100.0
+
+    def rank(k, cur):
+        if cur is None:
+            return None
+        vs = [v for v in (f(k, r) for r in rows) if v is not None]
+        if len(vs) < 30:
+            return None
+        return sum(1 for v in vs if v <= cur) / float(len(vs) - 1) * 100.0
+
+    sp = f('cn_10y_2y', rows[-1])
+    s30 = f('cn_30y_10y', rows[-1])
+    sp = None if sp is None else sp * 100.0
+    s30 = None if s30 is None else s30 * 100.0
+    d2, d10 = chg('cn_2y'), chg('cn_10y')
+    d30 = chg('cn_30y_10y')
+    if sp is None and d2 is None and d10 is None:
+        return None
+    inv = sp is not None and sp < 0
+
+    quad, desc, lead = '—', '', ''
+    if d2 is not None and d10 is not None:
+        if abs(d2) < 1.5 and abs(d10) < 1.5:
+            quad = '基本走平'
+            desc = '两端 20 日变化都在 2bp 量级以内，形态在噪声范围内，不构成方向性信号。'
+        elif d2 > 0 and d10 < 0:
+            quad = '倒挂加深' if inv else '熊平扭转'
+            desc = ('短端上行、长端下行，倒挂进一步加深 → 短端在定价「不降息」、长端在定价「衰退」，'
+                    '市场内部矛盾加剧，是最难做的组合。') if inv else (
+                   '短端上行、长端下行 → 资金面边际收紧叠加增长 / 通胀预期下修，'
+                   '曲线向平坦甚至倒挂演变，对权益最不友好。')
+        elif d2 < 0 and d10 > 0:
+            quad = '倒挂修复' if inv else '牛陡扭转'
+            desc = ('短端下行、长端上行，倒挂收窄 → 短端开始计入降息、长端风险偏好修复，'
+                    '是压力缓解的方向。') if inv else (
+                   '短端下行、长端上行 → 短端受益于流动性投放，长端在定价供给 / 通胀预期；'
+                   '宽松是有的，但不便宜长债。')
+        else:
+            bull, steep = (d2 + d10) / 2 < 0, (d10 - d2) > 0
+            quad = ('牛' if bull else '熊') + ('陡' if steep else '平')
+            lead = ('，' + ('长端' if abs(d10) >= abs(d2) else '短端')
+                    + '领' + ('跌' if (d10 < 0 or d2 < 0) else '涨'))
+            if bull and steep:
+                desc = '短端下行更快 → 降息 / 流动性投放直接驱动，是最「干净」的宽松信号，对成长与长久期资产最友好。'
+            elif bull:
+                desc = ('长端下行更快 → 宽松预期确实在升温，但更可能来自增长与通胀预期下修（避险 / 资产荒）：'
+                        '钱是松的，盈利预期却在往下走。')
+            elif steep:
+                desc = '长端上行更快 → 增长或通胀预期回暖，也可能是超长债供给冲击；名义利率抬升压制估值。'
+            else:
+                desc = '短端上行更快 → 资金面边际收紧 / 政策边际转鹰，短端锚在上移，对高估值板块最不友好。'
+
+    shape = rate_shape(sp)
+    head = quad if (shape == '倒挂' and quad.startswith('倒挂')) \
+        else ' · '.join([x for x in ('' if shape == '—' else shape, '' if quad == '—' else quad) if x])
+    return {
+        'head': head, 'shape': shape, 'quad': quad, 'desc': desc, 'lead': lead,
+        'sp': sp, 's30': s30, 'd2': d2, 'd10': d10, 'd30': d30, 'inv': inv,
+        'p_sp': rank('cn_10y_2y', f('cn_10y_2y', rows[-1])),
+        'p_10y': rank('cn_10y', f('cn_10y', rows[-1])),
+        'n': n, 'y2': f('cn_2y', rows[-1]), 'y10': f('cn_10y', rows[-1]),
+    }
 
 
 def load_data(src):
@@ -188,7 +293,7 @@ def build(d):
       '任一取数模块失败只隐藏对应区块，不会拖垮整份报告。')
     A('6. 下结论时**同时引用证据与其数据日**，明确写出「不构成投资建议」；'
       '单一方向证据不足时请直接标注「证据不足」，不要下买卖结论。')
-    A('7. **⑤-4 潜在危机判定**（看板新增图）的口径：|EFFR−T10YIE| 与 |US02Y−T10YIE| 均 < 50bp '
+    A('7. **⑥-4 潜在危机判定**（看板新增图）的口径：|EFFR−T10YIE| 与 |US02Y−T10YIE| 均 < 50bp '
       '**且** 信用利差(OAS) > 400bp 时判为「潜在危机」，对应 `data.json` 的 `lsi.hist.crisis_signal` '
       '逐日布尔序列，与⑦报警表「潜在危机判定」项是**同一公式同一来源**，不要另算。'
       '该图 6 条线（信用利差 OAS / EFFR / US02Y / T10YIE / DFII10 实际利率 / 通胀 YoY）单位统一为 bp，'
@@ -438,9 +543,11 @@ def build(d):
         if liq.get('latest'):
             A('### ② 境内资金面（DR001 / SHIBOR 隔夜 O/N / FR001，单位 % 年化）')
             A('')
-            A('> 派生量为 **bp**（1bp = 0.01 个百分点）。⑨ 面板口径自 **2026-11-10** 起：'
+            A('> 派生量为 **bp**（1bp = 0.01 个百分点）。⑩ 面板口径自 **2026-11-10** 起：'
               '主线由 `DR007` **换锚为 `DR001`**（2026-11-02 后央行调控目标），DR007 退居辅助；'
-              '灰虚线全名为「**SHIBOR 隔夜 O/N**」，不可简写成「隔夜」。')
+              '灰虚线全名为「**SHIBOR 隔夜 O/N**」，不可简写成「隔夜」。'
+              '　（注：本节标题的 `②` 是**本文档**内部的六件套编号，`⑩` 是**看板面板**编号，'
+              '两套编号互不相干，不要互相换算。）')
             A('')
             A('> **20 日中枢 / 波动区间全自动**：`CENTER` = `dr001` 末 20 行有值点均值，'
               '`LO~HI` = 同窗口 min~max，随每日数据滚动；**不硬编码政策利率**，'
@@ -459,7 +566,7 @@ def build(d):
                     ('同窗口波动区间 `LO~HI`（%）', '%s ~ %s' % (num(lo, 4), num(hi, 4))),
                     ('窗口内有值交易日 `n`', str(n)),
                     ('DR001 距中枢（bp）', ('%+.1f' % dev) if dev is not None else '—'),
-                ], ('⑨ 面板派生项（本地自算）', '值')))
+                ], ('⑩ 面板派生项（本地自算）', '值')))
                 A('')
             A('> **两个 bp 基准不同，禁止混读**：「距中枢」= `DR001 − CENTER`（纵向，今天 vs 近期常态）；'
               '「FR001 分层溢价」= `FR001 − DR001`（横向，全市场 vs 银行间）。'
@@ -475,7 +582,7 @@ def build(d):
             A('')
             if liq.get('derived'):
                 A('> `derived` 里 `dr007_ma20` / `dr007_vs_ma20_bp` 等仍以 DR007 为主，'
-                  '是给 ⑨ 第 4 张 DR007 卡片用的，**不是「没跟着换锚」**。')
+                  '是给 ⑩ 第 4 张 DR007 卡片用的，**不是「没跟着换锚」**。')
                 A('')
                 L.extend(kv_table([('`%s`' % k, num(v, 4) if isinstance(v, float) else s(v))
                                    for k, v in liq['derived'].items()], ('派生字段', '值 (bp)')))
@@ -521,6 +628,39 @@ def build(d):
             A('')
             A('> 利差字段为百分点（×100 即 bp）；派生量为 bp。')
             A('')
+            vd = rates_verdict(rates)
+            if vd:
+                A('**自动结论：%s**' % vd['head'])
+                A('')
+                if vd['sp'] is not None:
+                    A('- **形态** 10Y−2Y %s → **%s**%s；2Y %s 贴政策利率，10Y %s%s'
+                      % (bps(vd['sp'], False), vd['shape'],
+                         '' if vd['p_sp'] is None else
+                         '（近 %d 个交易日 %d%% 分位）' % (vd['n'], round(vd['p_sp'])),
+                         '%s%%' % num(vd['y2'], 3), '%s%%' % num(vd['y10'], 3),
+                         '' if vd['p_10y'] is None else
+                         '（近一年 %d%% 分位）' % round(vd['p_10y'])))
+                if vd['quad'] != '—':
+                    A('- **方向（近 20 日）** 2Y %s、10Y %s → **%s**%s。%s'
+                      % (bps(vd['d2']), bps(vd['d10']), vd['quad'], vd['lead'], vd['desc']))
+                if vd['s30'] is not None:
+                    A('- **超长端** 30Y−10Y %s%s → 这是**期限溢价**，反映超长债供给 / 久期需求 / 长期增长预期，'
+                      '**两个方向都不等于宽松或收紧**。'
+                      % (bps(vd['s30'], False),
+                         '' if vd['d30'] is None else
+                         '（近 20 日 %s，%s）' % (
+                             bps(vd['d30']),
+                             '溢价抬升' if vd['d30'] > 0 else ('溢价压缩' if vd['d30'] < 0 else '基本走平'))))
+                if vd['inv']:
+                    A('- **倒挂** 10Y < 2Y 已成立 → 市场把**强宽松**定价进了短端，这是「预期」而非「现实」，'
+                      '历史上极少见且常与衰退定价同时出现，不能读成「越倒挂越宽松」。')
+                A('')
+                A('> 口径与看板 ⑬ 面板那段「自动结论」同算法：牛 / 熊看两端 20 日平均变化，陡 / 平看利差变化'
+                  '（10Y−2Y 变大＝变陡），四象限互斥；两端变化均在 ±1.5bp 内判「基本走平」；'
+                  '两端一上一下判「扭转」（熊平扭转 / 牛陡扭转 / 倒挂加深 / 倒挂修复）。'
+                  '**「走阔」只表示变陡、不带方向** —— 牛陡＝松、熊陡＝紧，必须同时看两端谁在动。'
+                  '全部由下方 `data` 现算，与页面同源，未新增取数。')
+                A('')
             L.extend(kv_table([('`%s`' % k, num(v, 4) if isinstance(v, float) else s(v))
                                for k, v in rates['latest'].items()], ('字段', '最新值')))
             A('')

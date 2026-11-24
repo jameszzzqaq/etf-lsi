@@ -277,7 +277,7 @@ def signals_block(S):
     """⑥ 市场环境监测：指数估值 / 境内资金面 / ETF 折溢价 / 市场宽度。
 
     四块彼此独立抓取，任何一块缺失就整块跳过（不留空表头）。
-    与看板 ⑨⑩⑪⑫ 面板同源，字段口径见 a-stock-api README §2。
+    与看板 ⑩⑪⑫⑬ 面板同源，字段口径见 a-stock-api README §2。
     """
     if not S:
         return ''

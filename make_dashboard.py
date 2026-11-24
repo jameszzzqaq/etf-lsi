@@ -2,17 +2,23 @@
 """
 三合一交互式 HTML 总控看板（自包含、无外部依赖、离线可用）
 
-区块：
+区块（编号与页面 <h2> 一一对应，改编号时三处必须同步：
+      本注释 / <h2> 文案 / README 4.5·4.6·12.5·12.6）：
   ① 顶部状态卡（沪深300 / 创业板 / 红利低波 / 宏观 LSI）
   ② 沪深300 双轴交互图（悬停看每日明细）
   ③ 创业板 双轴交互图
   ③-b 红利低波 双轴交互图
   ④ 四大风格 / 股债比价全周期百分位
-  ⑤ 宏观 LSI 核心面板 + V57 资金流向雷达
-  ⑥ 20 项背景报警全量明细表（原始数据 / 公式 / 结果 / 阈值 / 红绿报警）
-  ⑦ 正面宽松状态指示
-  ⑧ 四维全景合成诊断
-  ⑨ 近 5 日 ETF 份额明细表（三大主力赛道）
+  ⑤ 指数估值分位（PE / PB，8 只）
+  ⑥ 宏观 LSI 核心面板 + V57 资金流向雷达
+  ⑦ 20 项背景报警全量明细表（原始数据 / 公式 / 结果 / 阈值 / 红绿报警）
+  ⑧ 正面宽松状态指示
+  ⑨ 四维全景合成诊断
+  ⑩ 境内资金面（DR001 / 20 日中枢）＋ 与 ⑥ 的境外流动性互为对照
+  ⑪ 市场宽度（涨跌家数 / 涨停跌停 / 连板高度）
+  ⑫ ETF 折溢价（二级市场价 vs 单位净值）
+  ⑬ 国债收益率曲线与期限利差（含自动结论）
+  附：近 5 日 ETF 份额明细表（三大主力赛道，`#shareBlocks`，不占编号）
 """
 import json, os, sys, datetime
 
@@ -177,6 +183,19 @@ h2{font-size:15px;font-weight:600;margin-bottom:4px}
 .card .d{font-size:11.5px;color:var(--sub);margin-top:3px}
 .panel{background:var(--panel);border:1px solid var(--grid);border-radius:14px;padding:16px 16px 12px;margin-bottom:18px;position:relative}
 .panel .hint{color:var(--sub);font-size:11.8px;margin-bottom:9px;line-height:1.75}
+/* ⑬ 自动结论：renderRates() 现算现写，不落盘、不改 const D 结构；
+   llms.txt 里那份由 make_llm_summary.py 的 rates_verdict() 用同一算法复算 */
+.concl{background:var(--panel2);border:1px solid var(--grid);border-left:3px solid var(--orange);
+border-radius:11px;padding:12px 15px 11px;margin:2px 0 15px}
+.concl .ch{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin-bottom:7px}
+.concl .ch .ttl{font-size:12px;color:var(--sub);letter-spacing:.3px}
+.concl .ch b{font-size:14.5px;font-weight:700}
+.concl .ch .tag{font-size:11px;padding:1px 8px;border-radius:8px;border:1px solid;font-weight:600;white-space:nowrap}
+.concl ul{margin:0;padding:0;list-style:none}
+.concl li{font-size:12.3px;padding:3px 0 3px 15px;position:relative;line-height:1.72}
+.concl li::before{content:'·';position:absolute;left:3px;color:var(--sub);font-weight:700}
+.concl li .k{color:var(--sub)}
+.concl .cf{color:#6b7484;font-size:11px;margin-top:8px;padding-top:7px;border-top:1px dashed var(--grid);line-height:1.72}
 svg{display:block;width:100%;height:auto}
 .tip{position:absolute;pointer-events:none;background:#0E1014f2;border:1px solid var(--grid);border-radius:9px;
 padding:9px 12px;font-size:12px;min-width:210px;display:none;z-index:9;line-height:1.8;box-shadow:0 8px 24px #0008}
@@ -303,7 +322,7 @@ border-radius:10px;padding:12px 15px;margin-bottom:10px;font-size:12.8px;line-he
 <div class="panel" id="lsiPanel" style="display:none">
   <h2>⑥ 宏观 LSI 核心面板（美联储流动性压力指数）</h2>
   <div class="hint" id="lsiHint"></div>
-  <h2 style="margin-top:8px">⑤-1 美元宏观流动性压力指数 LSI vs 美联储净流动性 GLI（悬停查看每日数值 · 可缩放查看近 5 年）</h2>
+  <h2 style="margin-top:8px">⑥-1 美元宏观流动性压力指数 LSI vs 美联储净流动性 GLI（悬停查看每日数值 · 可缩放查看近 5 年）</h2>
   <div class="legend"><span><i style="background:var(--orange)"></i>LSI 压力指数（左轴，bps）</span>
   <span><i style="background:var(--blue)"></i>GLI 净流动性（右轴，万亿美元 T）</span>
   <span><i style="background:#F5A623"></i>阈值线：+20 / +50 / −30 bps</span></div>
@@ -380,6 +399,7 @@ border-radius:10px;padding:12px 15px;margin-bottom:10px;font-size:12.8px;line-he
   <h2>⑬ 国债收益率曲线与期限利差（无风险利率 · 数据源：东财）</h2>
   <div class="hint" id="ratesHint"></div>
   <div class="cards" id="ratesCards"></div>
+  <div class="concl" id="ratesConcl" style="display:none"></div>
   <div class="subh">曲线形态（横轴＝期限 2Y / 5Y / 10Y / 30Y）：同一条收益率曲线在三个日期的三张快照</div>
   <svg id="ratesCurve" viewBox="0 0 1000 300"></svg>
   <div class="subh" id="ratesSpreadSub">10Y − 2Y 期限利差（横轴＝交易日）：上图每条线 2Y→10Y 的落差＝这条曲线上的一个点　｜　单位 bp，负值＝倒挂</div>
@@ -880,7 +900,7 @@ if (D.lsi) {
     '<br>' + f.items.map(x=>esc(x.name)+' '+sign(x.delta_b,2)+'B').join('　｜　') + '</div>';
 }
 
-/* ---------- ⑤-3 US02Y − EFFR 缺口（近 250 个交易日） ---------- */
+/* ---------- ⑥-3 US02Y − EFFR 缺口（近 250 个交易日） ---------- */
 (function renderUsGap(){
   const L = D.lsi;
   if (!L || !L.hist || !L.hist.us2_effr || !L.cal) return;
@@ -906,7 +926,7 @@ if (D.lsi) {
   const mn = mnv - pad, mx = mxv + pad;
 
   // 头文字刻意不写日期区间：横轴两端已经有，重复反而让窄屏折行时把最后几个字甩到下一行。
-  $('usGapH').innerHTML = '⑤-3 US02Y − EFFR 缺口 · 近 ' + n + ' 个交易日'
+  $('usGapH').innerHTML = '⑥-3 US02Y − EFFR 缺口 · 近 ' + n + ' 个交易日'
     + '　｜　<b style="color:#E8453C">上方＝定价加息</b> · <b style="color:#1FB37A">下方＝定价降息</b>'
     + '　｜　区间 ' + mnv.toFixed(0) + ' ~ ' + mxv.toFixed(0) + ' bp（加息 ' + pos + ' 天 · 降息 ' + neg + ' 天）';
 
@@ -959,7 +979,7 @@ if (D.lsi) {
   $('usGapChart').innerHTML = g;
 })();
 
-/* ---------- ⑤-4 危机预警组合图（近 5 年 · 6 线可勾选 · 危机背景带） ---------- */
+/* ---------- ⑥-4 危机预警组合图（近 5 年 · 6 线可勾选 · 危机背景带） ---------- */
 (function renderCrisisCombo(){
   const L = D.lsi;
   if (!L || !L.hist || !L.cal) return;
@@ -1067,7 +1087,7 @@ if (D.lsi) {
   const lastCrisis = crisis[n-1]===true;
   const crisisDays = crisis.slice(0,n).filter(x=>x===true).length;
   const creditNow=(H.credit||[])[n-1];
-  $('crisisH').innerHTML = '⑤-4 潜在危机判定 · 利率收敛 + 高利差 · 近 '+n+' 个交易日（约 5 年）'+
+  $('crisisH').innerHTML = '⑥-4 潜在危机判定 · 利率收敛 + 高利差 · 近 '+n+' 个交易日（约 5 年）'+
     '　｜　判定：|EFFR−T10YIE| &lt; 50 且 |US02Y−T10YIE| &lt; 50 且 信用利差 &gt; 400bp'+
     '　｜　当前 <b style="color:'+(lastCrisis?'#E8453C':'#1FB37A')+'">'+(lastCrisis?'⚠ 已触发':'✅ 未触发')+'</b>'+
     '　｜　历史触发 '+crisisDays+' 天'+
@@ -1700,10 +1720,43 @@ $('shareBlocks').innerHTML = sh;
   const bpc = v => (v === null || v === undefined) ? 'var(--sub)' : (v > 0 ? 'var(--up)' : (v < 0 ? 'var(--down)' : 'var(--txt)'));
 
   const inverted = dv.inverted === true;
+
+  // ── 现算派生量：卡片、下方自动结论共用同一份，避免两处口径各说各话 ──
+  // 形态分档为什么这么切：中国 10Y−2Y 长期为正、多数年份落在 30~90bp，
+  // 若沿用「> 0.5bp 就叫正常陡峭」的粗判，35bp（近一年 1% 分位）这种
+  // 极值会被写成「正常」，恰好把最该看见的信息抹掉。
+  function rateShape(v) {
+    if (v === null || v === undefined) return '—';
+    if (v < 0) return '倒挂';
+    if (v < 20) return '极度平坦';
+    if (v < 50) return '偏平';
+    if (v < 120) return '正常陡峭';
+    return '陡峭';
+  }
+  function chgN(key, m) {                 // 近 m 个交易日变化，单位 bp
+    const a = rows[n - 1 - m], b = rows[n - 1];
+    if (!a || !b) return null;
+    const x = a[key], y = b[key];
+    if (x === null || x === undefined || y === null || y === undefined) return null;
+    return (y - x) * 100;
+  }
+  function pctRank(key, cur) {            // 当前值在窗口内的分位（nearest-rank，0~100）
+    if (cur === null || cur === undefined) return null;
+    const vs = rows.map(r => r[key]).filter(v => v !== null && v !== undefined);
+    if (vs.length < 30) return null;
+    let k = 0;
+    for (const v of vs) if (v <= cur) k++;
+    return (k - 1) / (vs.length - 1) * 100;
+  }
+  const bp0 = v => (v === null || v === undefined) ? '—' : Number(v).toFixed(1) + ' bp';
+  const spBp = (lt.cn_10y_2y === null || lt.cn_10y_2y === undefined) ? null : lt.cn_10y_2y * 100;
+  const s30Bp = (lt.cn_30y_10y === null || lt.cn_30y_10y === undefined) ? null : lt.cn_30y_10y * 100;
+  const d2 = chgN('cn_2y', 20), d10 = chgN('cn_10y', 20), d30 = chgN('cn_30y_10y', 20);
+
   $('ratesHint').innerHTML = '国债到期收益率是<b>无风险利率</b>，整条曲线同时隐含增长与通胀预期。'
-    + '与 ⑨ 的区别：⑨ 看的是银行间<b>资金价格</b>（DR007/SHIBOR，短端、政策驱动，回答「钱紧不紧」），'
+    + '与 ⑩ 的区别：⑩ 看的是银行间<b>资金价格</b>（DR001 / SHIBOR 隔夜 O/N / FR001，短端、政策驱动，回答「钱紧不紧」），'
     + '本节看的是<b>债券收益率曲线</b>（回答「钱贵不贵」）——算股债性价比时分母用的就是 10Y 国债。'
-    + '利差走阔 / 走平的判读随下方所选期限段而变，见切换条右侧的提示。'
+    + '利差走阔 / 走平的判读随下方所选期限段而变，见切换条右侧的提示与下方<b>自动结论</b>。'
     + '<br><b>本面板两张图的横轴不同</b>：上图是<b>期限</b>（2Y→30Y），三条线是同一条曲线在三个日期的三张快照；'
     + '下图是<b>交易日</b>，把某一段期限利差逐日连成一条线（下方按钮可切换 10Y−2Y / 30Y−10Y）。'
     + '上图每条线上所选两个期限点的落差，就是下图在那一天的一个点 —— 下图画的是上图的斜率，不是另一个指标。'
@@ -1727,11 +1780,92 @@ $('shareBlocks').innerHTML = sh;
     + '<div class="d">30Y−10Y ' + bp(lt.cn_30y_10y === null || lt.cn_30y_10y === undefined ? null : lt.cn_30y_10y * 100)
     + '｜10Y 近20日 <span style="color:' + bpc(dv.cn_10y_chg_20d_bp) + '">' + bp(dv.cn_10y_chg_20d_bp) + '</span></div></div>';
   ch += '<div class="card"><div class="k">10Y − 2Y 期限利差</div>'
-    + '<div class="v" style="color:' + (inverted ? 'var(--up)' : 'var(--txt)') + '">'
-    + bp(lt.cn_10y_2y === null || lt.cn_10y_2y === undefined ? null : lt.cn_10y_2y * 100) + '</div>'
-    + '<div class="d">' + (inverted ? '倒挂（10Y &lt; 2Y）' : (lt.cn_10y_2y > 0.005 ? '正常陡峭' : '平坦'))
+    + '<div class="v" style="color:' + (inverted ? 'var(--up)' : 'var(--txt)') + '">' + bp(spBp) + '</div>'
+    + '<div class="d">' + (inverted ? '倒挂（10Y &lt; 2Y）' : rateShape(spBp))
     + '｜近 20 日 <span style="color:' + bpc(dv.cn_10y_2y_chg_20d_bp) + '">' + bp(dv.cn_10y_2y_chg_20d_bp) + '</span></div></div>';
   $('ratesCards').innerHTML = ch;
+
+  // ── 自动结论：把上下两张图读成一句话 ──
+  // 四象限：牛 / 熊看两端 20 日平均变化，陡 / 平看利差方向。
+  // 要害在于「走阔」本身不带方向 —— 牛陡是宽松、熊陡是收紧，必须看是谁在动；
+  // 而 30Y−10Y 是期限溢价，两个方向都不等于宽松或收紧，所以不并进这一句。
+  (function ratesConclusion() {
+    if (spBp === null && d2 === null && d10 === null) return;
+    const shape = rateShape(spBp);
+    const inv = spBp !== null && spBp < 0;
+    let quad = '—', qdesc = '', qcol = 'var(--sub)', lead = '';
+    if (d2 !== null && d10 !== null) {
+      const lvl = (d2 + d10) / 2;        // 水平：<0 牛（下行）、>0 熊（上行）
+      const slp = d10 - d2;              // 斜率：>0 陡、<0 平
+      if (Math.abs(d2) < 1.5 && Math.abs(d10) < 1.5) {
+        quad = '基本走平';
+        qdesc = '两端 20 日变化都在 2bp 量级以内，形态在噪声范围内，不构成方向性信号。';
+      } else if (d2 > 0 && d10 < 0) {
+        // 两端一上一下＝扭动，套牛熊陡平四象限会把结论读反，单列一档
+        quad = inv ? '倒挂加深' : '熊平扭转';
+        qcol = 'var(--orange)';
+        qdesc = inv
+          ? '短端上行、长端下行，倒挂进一步加深 → 短端在定价「不降息」、长端在定价「衰退」，市场内部矛盾加剧，是最难做的组合。'
+          : '短端上行、长端下行 → 资金面边际收紧叠加增长 / 通胀预期下修，曲线向平坦甚至倒挂演变，对权益最不友好。';
+      } else if (d2 < 0 && d10 > 0) {
+        quad = inv ? '倒挂修复' : '牛陡扭转';
+        qcol = 'var(--orange)';
+        qdesc = inv
+          ? '短端下行、长端上行，倒挂收窄 → 短端开始计入降息、长端风险偏好修复，是压力缓解的方向。'
+          : '短端下行、长端上行 → 短端受益于流动性投放，长端在定价供给 / 通胀预期；宽松是有的，但不便宜长债。';
+      } else {
+        const bull = lvl < 0, steep = slp > 0;
+        quad = (bull ? '牛' : '熊') + (steep ? '陡' : '平');
+        qcol = bull ? 'var(--down)' : 'var(--up)';
+        lead = '，' + (Math.abs(d10) >= Math.abs(d2) ? '长端' : '短端') + '领' + ((d10 < 0 || d2 < 0) ? '跌' : '涨');
+        if (bull && steep) qdesc = '短端下行更快 → 降息 / 流动性投放直接驱动，是最「干净」的宽松信号，对成长与长久期资产最友好。';
+        else if (bull) qdesc = '长端下行更快 → 宽松预期确实在升温，但更可能来自<b>增长与通胀预期下修</b>（避险 / 资产荒）：钱是松的，盈利预期却在往下走。';
+        else if (steep) qdesc = '长端上行更快 → 增长或通胀预期回暖，也可能是超长债供给冲击；名义利率抬升压制估值。';
+        else qdesc = '短端上行更快 → 资金面边际收紧 / 政策边际转鹰，短端锚在上移，对高估值板块最不友好。';
+      }
+    }
+    const pSp = pctRank('cn_10y_2y', lt.cn_10y_2y);
+    const p10 = pctRank('cn_10y', lt.cn_10y);
+    // 标题只放「形态 · 方向」，数值交给 tag，避免同一句话里把 35.1bp 说两遍；
+    // 「倒挂 · 倒挂加深」这种同义重复也要收掉，只说一次。
+    const dupInv = shape === '倒挂' && quad.indexOf('倒挂') === 0;
+    const headTxt = dupInv ? quad
+      : [shape !== '—' ? shape : '', quad !== '—' ? quad : ''].filter(Boolean).join(' · ');
+    const hcol = inv ? 'var(--up)' : (qcol === 'var(--sub)' ? 'var(--txt)' : qcol);
+    const tags = [];
+    if (spBp !== null) tags.push('<span class="tag" style="color:var(--orange);border-color:var(--orange)">10Y−2Y ' + bp0(spBp) + '</span>');
+    if (s30Bp !== null) tags.push('<span class="tag" style="color:var(--blue);border-color:var(--blue)">30Y−10Y ' + bp0(s30Bp) + '</span>');
+
+    const li = [];
+    if (spBp !== null) {
+      li.push('<span class="k">形态</span>　10Y−2Y <b>' + bp0(spBp) + '</b> → <b>' + shape + '</b>'
+        + (pSp === null ? '' : '（近 ' + n + ' 个交易日 <b>' + Math.round(pSp) + '%</b> 分位）')
+        + '；2Y ' + pp(lt.cn_2y) + ' 贴政策利率，10Y ' + pp(lt.cn_10y)
+        + (p10 === null ? '' : '（近一年 ' + Math.round(p10) + '% 分位）') + '。');
+    }
+    if (quad !== '—') {
+      li.push('<span class="k">方向（近 20 日）</span>　2Y ' + bp(d2) + '、10Y ' + bp(d10)
+        + ' → <b style="color:' + qcol + '">' + quad + '</b>' + lead + '。' + qdesc);
+    }
+    if (s30Bp !== null) {
+      li.push('<span class="k">超长端</span>　30Y−10Y <b>' + bp0(s30Bp) + '</b>'
+        + (d30 === null ? '' : '（近 20 日 ' + bp(d30) + '，' + (d30 > 0 ? '溢价抬升' : (d30 < 0 ? '溢价压缩' : '基本走平')) + '）')
+        + ' → 这是<b>期限溢价</b>，反映超长债供给 / 久期需求 / 长期增长预期，<b>两个方向都不等于宽松或收紧</b>。');
+    }
+    if (inv) {
+      li.push('<span class="k">倒挂</span>　10Y &lt; 2Y 已成立 → 市场把<b>强宽松</b>定价进了短端，'
+        + '这是「预期」而非「现实」，历史上极少见且常与衰退定价同时出现，不能读成「越倒挂越宽松」。');
+    }
+    $('ratesConcl').innerHTML = '<div class="ch"><span class="ttl">自动结论</span>'
+      + '<b style="color:' + hcol + '">' + headTxt + '</b>' + tags.join('') + '</div>'
+      + '<ul>' + li.map(x => '<li>' + x + '</li>').join('') + '</ul>'
+      + '<div class="cf">口径：牛 / 熊看两端 20 日平均变化方向，陡 / 平看利差变化（10Y−2Y 变大＝变陡），四象限互斥；'
+      + '两端变化均在 ±1.5bp 内时判「基本走平」，不硬凑方向；两端一上一下时判「扭转」'
+      + '（熊平扭转 / 牛陡扭转 / 倒挂加深 / 倒挂修复），此时不再套四象限 —— 平均下来会把方向读反。'
+      + '<b>「走阔」只表示变陡，不带方向</b>：牛陡＝松、熊陡＝紧，所以必须同时看两端谁在动。'
+      + '30Y−10Y 是超长期限溢价，不参与宽松判读。以上全部由上方同一条曲线现算，与四张卡片同源，未新增取数。</div>';
+    $('ratesConcl').style.display = '';
+  })();
 
   // ── 曲线形态：当期 vs 60 日前 vs 250 日前 ──
   const TEN = [['2Y', 'cn_2y'], ['5Y', 'cn_5y'], ['10Y', 'cn_10y'], ['30Y', 'cn_30y']];
@@ -1805,7 +1939,8 @@ $('shareBlocks').innerHTML = sh;
   const SPREADS = {
     cn_10y_2y: {
       sub: '10Y − 2Y 期限利差（横轴＝交易日）：上图每条线 2Y→10Y 的落差＝这条曲线上的一个点　｜　单位 bp，负值＝倒挂',
-      hint: '短端贴政策利率；利差走阔多对应宽松预期升温，为负＝倒挂（市场定价强宽松）'
+      // 「走阔」只是变陡，本身不带方向；写成「走阔＝宽松」会把熊陡读反，这里必须分开说。
+      hint: '短端贴政策利率；走阔只等于变陡，方向要看两端谁在动——牛陡（短端领跌）＝松，熊陡（长端领涨）＝紧；为负＝倒挂（市场定价强宽松，是预期不是现实）'
     },
     cn_30y_10y: {
       sub: '30Y − 10Y 超长端期限溢价（横轴＝交易日）：上图每条线 10Y→30Y 的落差＝这条曲线上的一个点　｜　单位 bp，负值＝超长端倒挂',
