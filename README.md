@@ -14,10 +14,11 @@
 
 | 线路 | 地址 | 说明 |
 | :--- | :--- | :--- |
-| **主地址** | **https://etf-lsi.yygq.me/** | Cloudflare Pages 自定义域名，国内多数网络可直连 |
+| **主地址** | **https://invest.yygq.me/etf-lsi/** | Cloudflare 全球节点统一路径入口，国内多数网络可直连 |
+| **看板中心（聚合入口）** | **https://invest.yygq.me/** | 一个页面切五个看板，含本看板 |
 | **备用地址** | **https://jameszzzqaq.github.io/etf-lsi/** | GitHub Pages 原生托管 |
-| **同域兄弟看板** | [美股/世界经济](https://economy.yygq.me/) · [EarlETF](https://earl.yygq.me/) · [轮动监控](https://rotation.yygq.me/) · [国家队ETF](https://etf-flow.yygq.me/) | `yygq.me` 同域部署的全部看板 |
-| **🤖 发给 AI 的数据文档（llms.txt）** | **https://etf-lsi.yygq.me/llms.txt** | **把这条链接直接粘给大模型**，它就能读到本看板全部指标与结论；备用 https://jameszzzqaq.github.io/etf-lsi/llms.txt |
+| **同域兄弟看板** | [美股/世界经济](https://invest.yygq.me/economy/) · [EarlETF](https://invest.yygq.me/earl/) · [轮动监控](https://invest.yygq.me/rotation/) · [国家队ETF](https://invest.yygq.me/etf-flow/) | `invest.yygq.me` 同域部署的全部看板 |
+| **🤖 发给 AI 的数据文档（llms.txt）** | **https://invest.yygq.me/etf-lsi/llms.txt** | **把这条链接直接粘给大模型**，它就能读到本看板全部指标与结论；备用 https://jameszzzqaq.github.io/etf-lsi/llms.txt |
 
 > 两个地址是**同一份看板**，每天流水线跑完会同时更新，内容完全一致。
 > 国内打不开 `github.io` 时请用主地址；图标与添加到主屏幕后的体验也完全一样。
@@ -25,7 +26,7 @@
 > **给 AI 用（无需上传任何文件）**：复制上表「发给 AI 的数据文档」那条链接发给大模型即可。
 > 它是一份**每天随看板自动更新**的纯文本快照，覆盖三大主力 ETF 诊断、宏观 LSI 20 项报警、
 > 风格/股债比价、市场环境六件套与跨资产比价；同目录 `data.json` 是机器可读全量数据。
-> 两条线路（Cloudflare Pages / GitHub Pages）内容完全一致，国内优先用 `https://etf-lsi.yygq.me/`。
+> 两条线路（Cloudflare / GitHub Pages）内容完全一致，国内优先用 `https://invest.yygq.me/etf-lsi/`。
 
 手机微信 / Safari / Chrome 直接打开上面任一网址，然后：
 
@@ -47,7 +48,7 @@
    本仓库的 `gh-pages` 分支（GitHub Pages 自动发布，不含任何密钥）
         ↓ 同一次运行里并行发布到两个地方（同一份产物）
    ├── https://jameszzzqaq.github.io/etf-lsi/  GitHub Pages 原生托管
-   └── https://etf-lsi.yygq.me/                 Cloudflare Pages（国内更稳）
+   └── https://invest.yygq.me/etf-lsi/          Cloudflare 统一路径入口（国内更稳）
 ```
 
 **⚠️ 关于「每次打开是重新跑，还是读缓存」——答案是：读快照，不重新跑。**
@@ -698,7 +699,7 @@ git push -u origin main
 
 本仓库现已**公开**，看板直接发布到本仓库的 `gh-pages` 分支（GitHub Pages 原生支持公开仓库），无需第二个仓库：
 
-> 单一公开仓库 `jameszzzqaq/etf-lsi`：全部源码、配置在 `main` 分支，看板产物（`index.html` / `monitor.png` / 图标 / `manifest.json`）自动发布到 `gh-pages` 分支（GitHub Pages 托管），并同步至 Cloudflare Pages（`https://etf-lsi.yygq.me/`）。
+> 单一公开仓库 `jameszzzqaq/etf-lsi`：全部源码、配置在 `main` 分支，看板产物（`index.html` / `monitor.png` / 图标 / `manifest.json`）自动发布到 `gh-pages` 分支（GitHub Pages 托管），并同步至 Cloudflare Pages（经统一入口 `https://invest.yygq.me/etf-lsi/` 访问）。
 
 流水线末尾的 **Publish dashboard to GitHub Pages** 步骤会自动把产物推过去，
 Pages 从该仓库 `gh-pages` 分支根目录发布，网址见文首「📱 手机端访问地址」。
@@ -1383,8 +1384,8 @@ ValueError: 'M' is no longer supported for offsets. Please use 'ME' instead.
 
 | 文件 | 用途 | 主地址 | 备用地址 |
 | :--- | :--- | :--- | :--- |
-| `llms.txt` | 人话快照，约 25 KB，AI 抓取入口 | https://etf-lsi.yygq.me/llms.txt | https://jameszzzqaq.github.io/etf-lsi/llms.txt |
-| `data.json` | 机器可读全量数据，约 420 KB | https://etf-lsi.yygq.me/data.json | https://jameszzzqaq.github.io/etf-lsi/data.json |
+| `llms.txt` | 人话快照，约 25 KB，AI 抓取入口 | https://invest.yygq.me/etf-lsi/llms.txt | https://jameszzzqaq.github.io/etf-lsi/llms.txt |
+| `data.json` | 机器可读全量数据，约 420 KB | https://invest.yygq.me/etf-lsi/data.json | https://jameszzzqaq.github.io/etf-lsi/data.json |
 
 两个域名内容完全一致：`daily.yml` 把两者一起复制进 `public/`，同一份 `public/`
 既 `git push --force` 到 `gh-pages` 分支，又由 `wrangler pages deploy public` 上传到 Cloudflare Pages。

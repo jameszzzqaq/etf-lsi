@@ -27,7 +27,7 @@ import os
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-CF = 'https://etf-lsi.yygq.me'
+CF = 'https://invest.yygq.me/etf-lsi'
 GH = 'https://jameszzzqaq.github.io/etf-lsi'
 
 # LSI core 字段中文名（仅用于展示，不参与计算；缺的键原样显示）
