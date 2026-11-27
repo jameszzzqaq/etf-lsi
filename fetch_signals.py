@@ -33,7 +33,7 @@ import config as C  # noqa: E402
 
 OUT = os.path.join(BASE, 'signals.json')
 BREADTH_HIST = os.path.join(BASE, '_breadth_history.json')
-API_BASE = (os.environ.get('ETF_API_BASE') or 'https://a-stock-api.wj4020410.workers.dev').rstrip('/')
+API_BASE = (os.environ.get('ETF_API_BASE') or 'https://stock-api.yygq.me').rstrip('/')
 TIMEOUT = float(os.environ.get('ETF_API_TIMEOUT', '30'))
 BJT = timezone(timedelta(hours=8))
 

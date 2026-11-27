@@ -94,7 +94,7 @@ def _api_get(path, params=None, timeout=60):
     from urllib.parse import urlencode
     import urllib.request
     base = (os.environ.get('ETF_API_BASE') or
-            'https://a-stock-api.wj4020410.workers.dev').rstrip('/')
+            'https://stock-api.yygq.me').rstrip('/')
     url = base + path + ('?' + urlencode(params) if params else '')
     k = os.environ.get('A_STOCK_API_KEY', '')
     headers = {'User-Agent': 'etf-lsi-ratios/1.0'}

@@ -29,7 +29,7 @@ CAL_DAYS = int(os.environ.get('ETF_CAL_DAYS', '2000'))      # 日历天回溯：
 KLINE_LIMIT = int(os.environ.get('ETF_KLINE_LIMIT', '1500'))
 
 # 自建 Worker：只给「中证官方自由流通市值」这类 westock 没有的字段兜底；密钥只从环境变量读。
-API_BASE = (os.environ.get('ETF_API_BASE') or 'https://a-stock-api.wj4020410.workers.dev').rstrip('/')
+API_BASE = (os.environ.get('ETF_API_BASE') or 'https://stock-api.yygq.me').rstrip('/')
 API_TIMEOUT = float(os.environ.get('ETF_API_TIMEOUT', '30'))
 
 

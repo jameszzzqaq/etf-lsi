@@ -55,7 +55,7 @@ if BASE not in sys.path:
 CACHE = os.path.join(BASE, '_exchange_shares.json')
 
 # 自建数据代理（Cloudflare Worker）。国内本地调试可覆盖为其它地址。
-API_BASE = (os.environ.get('ETF_API_BASE') or 'https://a-stock-api.wj4020410.workers.dev').rstrip('/')
+API_BASE = (os.environ.get('ETF_API_BASE') or 'https://stock-api.yygq.me').rstrip('/')
 API_TIMEOUT = float(os.environ.get('ETF_API_TIMEOUT', '30'))
 
 # 首次回填窗口（交易日数）与每次强制刷新的尾部天数

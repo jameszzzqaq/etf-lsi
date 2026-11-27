@@ -1,8 +1,10 @@
 # 三合一全能监测系统：沪深300 / 创业板 / 红利低波 ETF + 宏观 LSI 流动性压力指数
 
+> **上游原仓库**：Fork 自 [wj624/etf-lsi](https://github.com/wj624/etf-lsi)，保留全部指标与口径，部署至 `jameszzzqaq` 与 `yygq.me`。
+
 一个仓库、一次流水线、一封邮件，同时完成 **A股三大主力 ETF 持仓背离监测** 与 **美联储宏观流动性压力指数（LSI）20 项报警**。
 
-- 🌐 云端：GitHub Actions 每工作日自动跑一次，出图 + 出交互看板 + 发汇总日报邮件到邮箱
+- 🌐 云端：GitHub Actions 每工作日自动跑一次，出图 + 出交互看板 + （可选）发汇总日报邮件到邮箱；未配置 `ETF_SMTP_*` 密钥时 `daily_run.py` 自动跳过发信，不影响看板与 AI 文档发布
 - 💻 本地：`python daily_run.py` 一条命令跑完全流程
 - 🧩 三个模块解耦，任一模块取数失败只降级隐藏对应区块，不会拖垮整份报告
 
@@ -12,10 +14,10 @@
 
 | 线路 | 地址 | 说明 |
 | :--- | :--- | :--- |
-| **主地址** | **https://etf-lsi.pages.dev/** | Cloudflare 全球节点，国内多数网络可直连 |
-| **备用地址** | **https://wj624.github.io/etf-lsi/** | GitHub Pages 原生托管 |
-| **看板中心（聚合入口）** | **https://wj-dashboards.pages.dev/** | 一个页面切四个看板，含本看板 |
-| **🤖 发给 AI 的数据文档（llms.txt）** | **https://etf-lsi.pages.dev/llms.txt** | **把这条链接直接粘给大模型**，它就能读到本看板全部指标与结论；备用 https://wj624.github.io/etf-lsi/llms.txt |
+| **主地址** | **https://etf-lsi.yygq.me/** | Cloudflare Pages 自定义域名，国内多数网络可直连 |
+| **备用地址** | **https://jameszzzqaq.github.io/etf-lsi/** | GitHub Pages 原生托管 |
+| **同域兄弟看板** | [美股/世界经济](https://economy.yygq.me/) · [EarlETF](https://earl.yygq.me/) · [轮动监控](https://rotation.yygq.me/) · [国家队ETF](https://etf-flow.yygq.me/) | `yygq.me` 同域部署的全部看板 |
+| **🤖 发给 AI 的数据文档（llms.txt）** | **https://etf-lsi.yygq.me/llms.txt** | **把这条链接直接粘给大模型**，它就能读到本看板全部指标与结论；备用 https://jameszzzqaq.github.io/etf-lsi/llms.txt |
 
 > 两个地址是**同一份看板**，每天流水线跑完会同时更新，内容完全一致。
 > 国内打不开 `github.io` 时请用主地址；图标与添加到主屏幕后的体验也完全一样。
@@ -23,7 +25,7 @@
 > **给 AI 用（无需上传任何文件）**：复制上表「发给 AI 的数据文档」那条链接发给大模型即可。
 > 它是一份**每天随看板自动更新**的纯文本快照，覆盖三大主力 ETF 诊断、宏观 LSI 20 项报警、
 > 风格/股债比价、市场环境六件套与跨资产比价；同目录 `data.json` 是机器可读全量数据。
-> 两条线路（Cloudflare / GitHub Pages）内容完全一致，国内优先用 `pages.dev`。
+> 两条线路（Cloudflare Pages / GitHub Pages）内容完全一致，国内优先用 `https://etf-lsi.yygq.me/`。
 
 手机微信 / Safari / Chrome 直接打开上面任一网址，然后：
 
@@ -44,8 +46,8 @@
         ↓ 自动推送
    本仓库的 `gh-pages` 分支（GitHub Pages 自动发布，不含任何密钥）
         ↓ 同一次运行里并行发布到两个地方（同一份产物）
-   ├── https://wj624.github.io/etf-lsi/     GitHub Pages 原生托管
-   └── https://etf-lsi.pages.dev/           Cloudflare Pages（国内更稳）
+   ├── https://jameszzzqaq.github.io/etf-lsi/  GitHub Pages 原生托管
+   └── https://etf-lsi.yygq.me/                 Cloudflare Pages（国内更稳）
 ```
 
 **⚠️ 关于「每次打开是重新跑，还是读缓存」——答案是：读快照，不重新跑。**
@@ -53,7 +55,7 @@
 - 打开网址**不会触发任何计算、不联网取数**，直接加载最近一次流水线生成好的 HTML，秒开。
 - 网页里所有数据（曲线、LSI 数值、20 项报警）都是**生成时烤死在 HTML 里的**，因此**断网也能看**。
 - 内容只在**每天 21:17 定时任务跑完后**更新一次。也就是说白天打开看到的是**前一晚 21:17 的快照**，不是实时行情。
-- 想立刻刷新：去本仓库 `wj624/etf-lsi`（`main`）→ Actions → **Run workflow**，跑完约 1 分钟后网址即更新。
+- 想立刻刷新：去本仓库 `jameszzzqaq/etf-lsi`（`main`）→ Actions → **Run workflow**，跑完约 1 分钟后网址即更新。
 
 本仓库已公开，源码与配置都在 `main` 分支；`gh-pages` 分支**只有生成的网页文件**，不含任何邮箱凭证或 API Key（密钥只存于 Actions Secrets）。
 若哪天不再需要网址，在仓库 Settings → Pages 关掉发布即可。
@@ -257,7 +259,7 @@ GLI (T)   = WALCL − WTREGEN − RRPONTSYD             美联储净流动性总
 **上游 / 依赖变了怎么办**
 
 - A 股这半只消费 Worker 的 HTTP 契约。Worker 侧怎么同步上游、怎么验证、怎么部署，见
-  [`wj624/a-stock-api` 的 README](https://github.com/wj624/a-stock-api/blob/main/README.md)
+  [`jameszzzqaq/a-stock-api` 的 README](https://github.com/jameszzzqaq/a-stock-api/blob/main/README.md)
   —— 里面有一份**可直接复制给 AI 的同步提示词**和 Runbook。只要字段名与单位不变，本仓库无需改动。
 - `requirements.txt` 现在只有 4 个依赖：`matplotlib / numpy / requests / openpyxl`。
   **已彻底移除 akshare**（连带 pandas），装依赖时间从分钟级降到秒级。
@@ -360,7 +362,7 @@ workflow 最后一步 `check_lsi_status.py` 读它决定这一轮的结论：
 ### 4.4 交易所份额（上交所）：多层容错 + 开工探测
 
 上交所份额是**逐日单点请求**（一天一次），也是最容易被限流的环节。
-2026-11 起这一层改成**先打自建 Worker**（`a-stock-api.wj4020410.workers.dev`），
+2026-11 起这一层改成**先打自建 Worker**（`stock-api.yygq.me`），
 由 Cloudflare 出口去请求 `query.sse.com.cn`，runner 共享出口 IP 被限流的问题因此消失，
 详见下方「为什么迁到 Worker」。
 
@@ -696,7 +698,7 @@ git push -u origin main
 
 本仓库现已**公开**，看板直接发布到本仓库的 `gh-pages` 分支（GitHub Pages 原生支持公开仓库），无需第二个仓库：
 
-> 单一公开仓库 `wj624/etf-lsi`：全部源码、配置在 `main` 分支，看板产物（`index.html` / `monitor.png` / 图标 / `manifest.json`）自动发布到 `gh-pages` 分支（GitHub Pages 托管）。原私有仓库 `etf-lsi-monitor` / `etf-lsi-pages` 已合并迁入，确认无误后可删除。
+> 单一公开仓库 `jameszzzqaq/etf-lsi`：全部源码、配置在 `main` 分支，看板产物（`index.html` / `monitor.png` / 图标 / `manifest.json`）自动发布到 `gh-pages` 分支（GitHub Pages 托管），并同步至 Cloudflare Pages（`https://etf-lsi.yygq.me/`）。
 
 流水线末尾的 **Publish dashboard to GitHub Pages** 步骤会自动把产物推过去，
 Pages 从该仓库 `gh-pages` 分支根目录发布，网址见文首「📱 手机端访问地址」。
@@ -1007,8 +1009,8 @@ A 股（境内）  fetch_exchange.py ── a-stock-api Worker ──┬─ quer
 ```
 
 - **改 A 股部分**：不要碰 `fetch_fred_lsi.py` / `common.py`。
-- **改宏观部分**：更不要顺手去动 Worker，那是另一个仓库（`wj624/a-stock-api`）的事。
-- **Worker 挂了怎么办**：先去看 [`a-stock-api` 的 README](https://github.com/wj624/a-stock-api/blob/main/README.md)，
+- **改宏观部分**：更不要顺手去动 Worker，那是另一个仓库（`jameszzzqaq/a-stock-api`）的事。
+- **Worker 挂了怎么办**：先去看 [`a-stock-api` 的 README](https://github.com/jameszzzqaq/a-stock-api/blob/main/README.md)，
   里面有上游映射表、Runbook 和一份可直接复制给 AI 的同步提示词。
   只要 `/api/etf-shares`、`/api/fund-nav`、`/api/trade-calendar` 的**字段名与单位**不变，**本仓库一行都不用改**。
 
@@ -1057,7 +1059,7 @@ A 股（境内）  fetch_exchange.py ── a-stock-api Worker ──┬─ quer
 
 | 变量 | 默认 | 作用 |
 | :--- | :---: | :--- |
-| `ETF_API_BASE` | `https://a-stock-api.wj4020410.workers.dev` | Worker 地址；换域名只改这里 |
+| `ETF_API_BASE` | `https://stock-api.yygq.me` | Worker 地址；换域名只改这里 |
 | `ETF_API_TIMEOUT` | `30` | Worker 单次请求超时（秒） |
 | `ETF_EXCHANGE_DAYS` | `250` | 份额缓存窗口（交易日） |
 | `ETF_EXCHANGE_TAIL` | `10` | 尾部强制重抓天数 |
@@ -1095,13 +1097,13 @@ A 股（境内）  fetch_exchange.py ── a-stock-api Worker ──┬─ quer
 ### 12.5 可复制给 AI 的提示词
 
 ```text
-【任务】维护 https://github.com/wj624/etf-lsi（沪深300 / 创业板 / 红利低波 ETF 持仓背离 + 宏观 LSI 压力指数日报）。
+【任务】维护 https://github.com/jameszzzqaq/etf-lsi（沪深300 / 创业板 / 红利低波 ETF 持仓背离 + 宏观 LSI 压力指数日报）。
 
 【先读什么】
 1. README 第四章「数据源、单位换算与剔除项」→ 认两条链路：宏观走 FRED，A 股走自建 Worker。
 2. README 第九章「防 Bug 铁律」8 条 → 都是真实踩坑，禁止回退。
 3. README 第十二章（本章）→ 12.1 文件职责表、12.3 六个坑、12.4 SOP。
-4. 要动 A 股取数时，再去读 https://github.com/wj624/a-stock-api 的 README（有上游映射表与同步提示词）。
+4. 要动 A 股取数时，再去读 https://github.com/jameszzzqaq/a-stock-api 的 README（有上游映射表与同步提示词）。
 
 【硬约束，违反即算错】
 - 只改 A 股那半（fetch_exchange.py）时，fetch_fred_lsi.py 与 common.py 一行不许动；反之亦然。
@@ -1155,7 +1157,7 @@ commit message 用中文，说明「改了什么 + 为什么」，涉及口径�
 ## 十三、跨资产比价卡片（金银比 / 金油比 / 铜金比 / KOSPI-GOLD）
 
 表头 9 张卡之后单独一行「跨资产比价 / 风险偏好」，4 张卡，数据来自自建 Worker 的
-`/api/macro-ratios`（`wj624/a-stock-api`），由 `fetch_signals.py` 的 `get_macro_ratios()` 抓取，
+`/api/macro-ratios`（`jameszzzqaq/a-stock-api`），由 `fetch_signals.py` 的 `get_macro_ratios()` 抓取，
 写进 `signals.json` 的 `macro_ratios`，再由 `make_dashboard.py` 注入 `D.signals.macro_ratios`。
 
 | 卡片 | 口径 | 显示 |
@@ -1235,7 +1237,7 @@ commit message 用中文，说明「改了什么 + 为什么」，涉及口径�
 ### D. 给 AI 的维护边界（可复制这段）
 
 ```
-你在维护 wj624/etf-lsi。动手前：
+你在维护 jameszzzqaq/etf-lsi。动手前：
 1. 先读 README 九、防 Bug 铁律（8 条）与十二、给 AI 的维护提示词（12.4 SOP / 12.5 硬约束），再读本附录。
 2. 绝对不要：删 _exchange_shares.json / _breadth_history.json / westock-data；删 http_json 的 CSV 兜底；
    简化上交所「开工探测 + 两轮 + 熔断」；用前一日份额顶替缺失日；把 IORB 从 _CAL_EXCLUDE 里拿掉；
@@ -1381,8 +1383,8 @@ ValueError: 'M' is no longer supported for offsets. Please use 'ME' instead.
 
 | 文件 | 用途 | 主地址 | 备用地址 |
 | :--- | :--- | :--- | :--- |
-| `llms.txt` | 人话快照，约 25 KB，AI 抓取入口 | https://etf-lsi.pages.dev/llms.txt | https://wj624.github.io/etf-lsi/llms.txt |
-| `data.json` | 机器可读全量数据，约 420 KB | https://etf-lsi.pages.dev/data.json | https://wj624.github.io/etf-lsi/data.json |
+| `llms.txt` | 人话快照，约 25 KB，AI 抓取入口 | https://etf-lsi.yygq.me/llms.txt | https://jameszzzqaq.github.io/etf-lsi/llms.txt |
+| `data.json` | 机器可读全量数据，约 420 KB | https://etf-lsi.yygq.me/data.json | https://jameszzzqaq.github.io/etf-lsi/data.json |
 
 两个域名内容完全一致：`daily.yml` 把两者一起复制进 `public/`，同一份 `public/`
 既 `git push --force` 到 `gh-pages` 分支，又由 `wrangler pages deploy public` 上传到 Cloudflare Pages。
