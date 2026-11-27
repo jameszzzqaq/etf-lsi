@@ -152,10 +152,16 @@ def fetch_one(date, track):
     """抓取某赛道单个交易日的指数 + 4 只 ETF"""
     cfg = TRACKS[track]
     rec = {'date': date}
-    o = common.run(['quote', cfg['index_code'], '--date', date])
-    t = common.first_table(o)
-    rec['idx_close'] = common.fnum(t.get('price'))
-    rec['idx_float_mv'] = common.fnum(t.get('circulating_market_cap')) or common.fnum(t.get('total_market_cap'))
+    if cfg.get('index_symbol') and cfg.get('float_mv_symbol'):
+        # 指数收盘价与自由流通市值均由权威源（Worker /api/csindex 与 /api/csindex-feature）覆盖，
+        # 跳过 westock quote 可避免对历史缺失日（如 2024-05-08 前的 csH30269）做无意义重试。
+        rec['idx_close'] = None
+        rec['idx_float_mv'] = None
+    else:
+        o = common.run(['quote', cfg['index_code'], '--date', date])
+        t = common.first_table(o)
+        rec['idx_close'] = common.fnum(t.get('price'))
+        rec['idx_float_mv'] = common.fnum(t.get('circulating_market_cap')) or common.fnum(t.get('total_market_cap'))
     o2 = common.run(['etf', 'detail', ','.join(cfg['etfs'].keys()), '--date', date])
     parts = common.split_by_code(o2)
     for code in cfg['etfs']:
@@ -253,7 +259,8 @@ def build_track(track, days, jobs, authoritative_closes=None):
           % (track, len(todo), len(tail), tail[0], tail[-1]))
 
     done, t0 = 0, time.time()
-    with ThreadPoolExecutor(max_workers=8) as ex:
+    workers = max(1, int(os.environ.get('ETF_FETCH_WORKERS', '16')))
+    with ThreadPoolExecutor(max_workers=workers) as ex:
         futs = {ex.submit(fetch_one, d, track): d for d in todo}
         for f in as_completed(futs):
             d = futs[f]
